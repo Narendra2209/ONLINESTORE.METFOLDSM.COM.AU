@@ -1,0 +1,233 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { Product } from '@/types/product';
+import { productApi } from '@/services/product.service';
+import ProductConfigurator from '@/components/product/ProductConfigurator';
+import Breadcrumb from '@/components/ui/Breadcrumb';
+import Badge from '@/components/ui/Badge';
+import Skeleton from '@/components/ui/Skeleton';
+import { cn } from '@/lib/utils';
+import { Package, FileText, Truck, Shield, ZoomIn } from 'lucide-react';
+
+export default function ProductDetailPage() {
+  const params = useParams();
+  const slug = params.slug as string;
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('description');
+  const [selectedImage, setSelectedImage] = useState(0);
+
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const data = await productApi.getProductBySlug(slug);
+        setProduct(data);
+      } catch {
+        // Handle error
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProduct();
+  }, [slug]);
+
+  if (loading) {
+    return (
+      <div className="container-main py-8 animate-fade-in-up">
+        <Skeleton className="h-4 w-48 mb-6" />
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
+          <div>
+            <Skeleton className="aspect-square w-full rounded-xl" />
+            <div className="mt-4 flex gap-2">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 w-16 rounded-lg" />
+              ))}
+            </div>
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-5 w-20" />
+            <Skeleton className="h-9 w-3/4" />
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-20 w-full mt-4" />
+            <Skeleton className="h-48 w-full mt-4" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="container-main py-20 text-center animate-fade-in-up">
+        <Package className="mx-auto h-16 w-16 text-steel-300" />
+        <h1 className="mt-4 text-2xl font-bold text-steel-900">Product not found</h1>
+        <p className="mt-2 text-steel-500">The product you are looking for does not exist.</p>
+      </div>
+    );
+  }
+
+  const activeImage = product.images?.[selectedImage] || product.images?.find((i) => i.isDefault) || product.images?.[0];
+
+  return (
+    <div className="bg-white animate-fade-in-up">
+      <div className="container-main py-6">
+        {/* Breadcrumb */}
+        <Breadcrumb
+          items={[
+            ...(product.category
+              ? [{ label: product.category.name, href: `/categories/${product.category.slug}` }]
+              : []),
+            { label: product.name },
+          ]}
+        />
+
+        {/* Product Layout */}
+        <div className="mt-6 grid grid-cols-1 gap-10 lg:grid-cols-2">
+          {/* Left: Image Gallery */}
+          <div className="space-y-4">
+            {/* Main image */}
+            <div className="group relative aspect-square rounded-2xl bg-steel-50 border border-steel-100 flex items-center justify-center overflow-hidden">
+              {activeImage?.url ? (
+                <>
+                  <img
+                    src={activeImage.url}
+                    alt={activeImage.alt || product.name}
+                    className="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute bottom-3 right-3 rounded-full bg-white/80 backdrop-blur-sm p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+                    <ZoomIn className="h-4 w-4 text-steel-600" />
+                  </div>
+                </>
+              ) : (
+                <div className="text-steel-300">
+                  <Package className="h-24 w-24" />
+                </div>
+              )}
+            </div>
+
+            {/* Thumbnail strip */}
+            {product.images && product.images.length > 1 && (
+              <div className="flex gap-2.5 overflow-x-auto pb-1">
+                {product.images.map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedImage(i)}
+                    className={cn(
+                      'h-18 w-18 flex-shrink-0 rounded-xl border-2 overflow-hidden transition-all duration-200',
+                      selectedImage === i
+                        ? 'border-brand-600 ring-2 ring-brand-200 shadow-md'
+                        : 'border-steel-200 hover:border-steel-300 opacity-70 hover:opacity-100'
+                    )}
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.alt || `Image ${i + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right: Product Info & Configurator */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              {product.category && (
+                <Badge variant="info">{product.category.name}</Badge>
+              )}
+              {product.isFeatured && <Badge variant="warning">Featured</Badge>}
+            </div>
+
+            <h1 className="text-2xl font-bold text-steel-900 lg:text-3xl tracking-tight leading-tight">
+              {product.name}
+            </h1>
+
+            {product.shortDescription && (
+              <p className="mt-4 text-steel-600 leading-relaxed">
+                {product.shortDescription}
+              </p>
+            )}
+
+            <div className="mt-6 border-t border-steel-100 pt-6">
+              <ProductConfigurator product={product} />
+            </div>
+
+            {/* Trust signals */}
+            <div className="mt-8 grid grid-cols-3 gap-4 border-t border-steel-100 pt-6">
+              {[
+                { icon: Truck, label: 'Fast Delivery', color: 'text-brand-500' },
+                { icon: Shield, label: 'Quality Guaranteed', color: 'text-green-500' },
+                { icon: FileText, label: 'Tax Invoice', color: 'text-amber-500' },
+              ].map((item) => (
+                <div key={item.label} className="flex flex-col items-center gap-1.5 text-center">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-steel-50">
+                    <item.icon className={cn('h-4 w-4', item.color)} />
+                  </div>
+                  <span className="text-xs font-medium text-steel-600">{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs: Description, Specifications */}
+        <div className="mt-14 border-t border-steel-100">
+          <div className="flex gap-0">
+            {['description', 'specifications'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={cn(
+                  'relative px-6 py-4 text-sm font-medium transition-colors',
+                  activeTab === tab
+                    ? 'text-brand-600'
+                    : 'text-steel-500 hover:text-steel-700'
+                )}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                <span className={cn(
+                  'absolute bottom-0 left-0 right-0 h-0.5 bg-brand-600 rounded-full transition-transform duration-200',
+                  activeTab === tab ? 'scale-x-100' : 'scale-x-0'
+                )} />
+              </button>
+            ))}
+          </div>
+
+          <div className="py-8">
+            {activeTab === 'description' && (
+              <div
+                className="prose prose-steel max-w-none prose-headings:font-semibold prose-p:leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: product.description || '<p class="text-steel-500 italic">No description available.</p>' }}
+              />
+            )}
+
+            {activeTab === 'specifications' && (
+              <div className="max-w-lg">
+                {product.specifications && Object.keys(product.specifications).length > 0 ? (
+                  <table className="w-full text-sm">
+                    <tbody>
+                      {Object.entries(product.specifications).map(([key, value], i) => (
+                        <tr key={key} className={cn(
+                          'border-b border-steel-100',
+                          i % 2 === 0 ? 'bg-steel-50/50' : ''
+                        )}>
+                          <td className="py-3 px-4 font-medium text-steel-700">{key}</td>
+                          <td className="py-3 px-4 text-steel-600">{value}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="text-steel-500 italic">No specifications available.</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
