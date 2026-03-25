@@ -84,7 +84,7 @@ export default function FlashingConfigurator() {
 
   // Drawing state
   const [points, setPoints] = useState<Point[]>([
-    { x: 250, y: 150 },
+    { x: 350, y: 200 },
   ]);
   const [segments, setSegments] = useState<Segment[]>([]);
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
@@ -175,8 +175,6 @@ export default function FlashingConfigurator() {
     if (target.closest('.point-handle')) return;
 
     const pt = getSvgPoint(e);
-
-    // If only 1 point exists, this click adds the second point (first line)
     setPoints((prev) => [...prev, pt]);
     setSegments((prev) => [...prev, { lengthMm: 50 }]);
   }, [draggingIdx, getSvgPoint]);
@@ -219,7 +217,7 @@ export default function FlashingConfigurator() {
   };
 
   const resetDiagram = () => {
-    setPoints([{ x: 250, y: 150 }]);
+    setPoints([{ x: 350, y: 200 }]);
     setSegments([]);
     setStartFold('Nothing');
     setStartFoldMm(0);
@@ -445,8 +443,8 @@ export default function FlashingConfigurator() {
         <div className="flex-1 relative rounded-2xl border-2 border-dashed border-steel-300 bg-steel-50/50 overflow-hidden">
           <svg
             ref={svgRef}
-            viewBox="0 0 500 300"
-            className="w-full h-[250px] sm:h-[300px] md:h-[400px] cursor-crosshair"
+            viewBox="0 0 700 400"
+            className="w-full h-[400px] sm:h-[500px] md:h-[600px] cursor-crosshair"
             onClick={handleSvgClick}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -458,7 +456,7 @@ export default function FlashingConfigurator() {
                 <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e2e8f0" strokeWidth="0.5" />
               </pattern>
             </defs>
-            <rect width="500" height="300" fill="url(#grid)" />
+            <rect width="700" height="400" fill="url(#grid)" />
 
             {/* Profile path */}
             {points.length >= 2 && (
@@ -521,32 +519,31 @@ export default function FlashingConfigurator() {
               );
             })}
 
-            {/* Segment labels */}
+            {/* Segment labels — positioned above the line */}
             {points.length >= 2 && points.map((p, i) => {
               if (i === points.length - 1) return null;
               const next = points[i + 1];
+              const dx = next.x - p.x;
+              const dy = next.y - p.y;
+              const len = Math.sqrt(dx * dx + dy * dy) || 1;
               const midX = (p.x + next.x) / 2;
               const midY = (p.y + next.y) / 2;
+              // Offset above the line (perpendicular)
+              const perpX = -dy / len;
+              const perpY = dx / len;
+              const offsetDist = 16;
+              const labelX = midX + perpX * offsetDist;
+              const labelY = midY + perpY * offsetDist;
               const seg = segments[i];
               if (!seg) return null;
 
               return (
                 <g key={`seg-${i}`}>
-                  <rect
-                    x={midX - 22}
-                    y={midY - 10}
-                    width="44"
-                    height="20"
-                    rx="4"
-                    fill="white"
-                    stroke="#3b82f6"
-                    strokeWidth="1"
-                  />
                   <text
-                    x={midX}
-                    y={midY + 4}
+                    x={labelX}
+                    y={labelY + 4}
                     textAnchor="middle"
-                    className="text-[10px] font-bold fill-blue-700 select-none pointer-events-none"
+                    className="text-[10px] font-bold fill-red-600 select-none pointer-events-none"
                   >
                     {seg.lengthMm}
                   </text>
@@ -632,8 +629,8 @@ export default function FlashingConfigurator() {
                     fill="transparent"
                     onMouseDown={(e) => handlePointMouseDown(i, e)}
                   />
-                  {/* Visible dot — only for middle points and the initial single dot */}
-                  {(!isEndpoint || isOnlyPoint) && (
+                  {/* Green dot for the single starting point, blue dots for fold points, no dots at start/end once lines exist */}
+                  {(isOnlyPoint || !isEndpoint) && (
                     <circle
                       cx={p.x}
                       cy={p.y}
@@ -671,36 +668,22 @@ export default function FlashingConfigurator() {
             )}
 
             {/* Instructions */}
-            <text x="250" y="290" textAnchor="middle" className="text-[10px] fill-steel-400 select-none pointer-events-none">
+            <text x="350" y="390" textAnchor="middle" className="text-[10px] fill-steel-400 select-none pointer-events-none">
               Click to add points. Drag points to adjust shape.
             </text>
           </svg>
         </div>
 
         {/* RIGHT: Controls sidebar */}
-        <div className="w-[160px] flex-shrink-0 flex flex-col gap-2">
-          {/* Colour Side Toggle */}
-          <div className="rounded-lg border border-steel-200 bg-white p-2">
-            <p className="text-[10px] font-bold text-steel-700 mb-1.5 text-center">Colour Side</p>
-            <div className="flex flex-col gap-1">
-              <button
-                onClick={() => setColourSide('Inside')}
-                className={`w-full py-1.5 text-xs font-semibold rounded transition-colors ${
-                  colourSide === 'Inside' ? 'bg-red-500 text-white' : 'bg-steel-100 text-steel-600 hover:bg-steel-200'
-                }`}
-              >
-                Inside
-              </button>
-              <button
-                onClick={() => setColourSide('Outside')}
-                className={`w-full py-1.5 text-xs font-semibold rounded transition-colors ${
-                  colourSide === 'Outside' ? 'bg-blue-500 text-white' : 'bg-steel-100 text-steel-600 hover:bg-steel-200'
-                }`}
-              >
-                Outside
-              </button>
-            </div>
-          </div>
+        <div className="w-[120px] flex-shrink-0 flex flex-col gap-1.5">
+          {/* Reverse Colour Side */}
+          <button
+            onClick={() => setColourSide(colourSide === 'Inside' ? 'Outside' : 'Inside')}
+            className="w-full py-2 text-[11px] font-semibold rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+          >
+            Reverse Color
+          </button>
+          <p className="text-[9px] text-center text-steel-500">{colourSide}</p>
 
           {/* Remove First */}
           <button
@@ -871,6 +854,34 @@ export default function FlashingConfigurator() {
                   onChange={(e) => {
                     const val = Math.max(0, Math.min(360, parseInt(e.target.value) || 0));
                     setFoldAngles((prev) => { const n = [...prev]; n[i] = val; return n; });
+
+                    // Reposition the point after the fold to match the new angle
+                    const foldPointIdx = i + 1; // interior fold point index in points array
+                    if (foldPointIdx < points.length - 1 && foldPointIdx > 0) {
+                      const prev2 = points[foldPointIdx - 1];
+                      const curr = points[foldPointIdx];
+                      const next2 = points[foldPointIdx + 1];
+
+                      // Incoming direction
+                      const dx = curr.x - prev2.x;
+                      const dy = curr.y - prev2.y;
+                      const inAngle = Math.atan2(dy, dx);
+
+                      // Outgoing segment length (keep same distance)
+                      const outDx = next2.x - curr.x;
+                      const outDy = next2.y - curr.y;
+                      const outLen = Math.sqrt(outDx * outDx + outDy * outDy) || 60;
+
+                      // New outgoing angle = incoming angle + (180 - fold angle)
+                      const turnRad = ((180 - val) * Math.PI) / 180;
+                      const outAngle = inAngle + turnRad;
+
+                      const newNext = {
+                        x: Math.round(curr.x + Math.cos(outAngle) * outLen),
+                        y: Math.round(curr.y + Math.sin(outAngle) * outLen),
+                      };
+                      setPoints((p) => { const np = [...p]; np[foldPointIdx + 1] = newNext; return np; });
+                    }
                   }}
                   className="w-full rounded-lg border border-steel-300 px-2 py-1.5 text-sm text-center font-medium focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                 />

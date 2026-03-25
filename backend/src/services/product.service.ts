@@ -118,11 +118,63 @@ export const productService = {
       ? await ProductVariant.find({ product: product._id, isActive: true }).sort({ sku: 1 })
       : [];
 
+    // Auto-find related/accessory products from the same parent category
+    let autoRelated: any[] = [];
+    if (product.category) {
+      const productCat = await Category.findById(product.category).lean();
+      if (productCat) {
+        // Find sibling categories (same parent) + parent category
+        const parentId = (productCat as any).parent;
+        let relatedCatIds: any[] = [];
+
+        if (parentId) {
+          // Product is in a subcategory — find all sibling subcategories
+          const siblings = await Category.find({ parent: parentId, _id: { $ne: productCat._id } }).select('_id');
+          relatedCatIds = siblings.map((c: any) => c._id);
+        } else {
+          // Product is in a top-level category — find all child categories
+          const children = await Category.find({ parent: productCat._id }).select('_id');
+          relatedCatIds = children.map((c: any) => c._id);
+        }
+
+        if (relatedCatIds.length > 0) {
+          autoRelated = await Product.find({
+            _id: { $ne: product._id },
+            categories: { $in: relatedCatIds },
+            status: 'active',
+            isVisible: true,
+          })
+            .select('name slug images price type category priceRange')
+            .populate('category', 'name slug')
+            .sort({ salesCount: -1 })
+            .limit(8)
+            .lean();
+        }
+
+        // If few related found, also add products from same category (excluding self)
+        if (autoRelated.length < 4) {
+          const sameCat = await Product.find({
+            _id: { $ne: product._id, $nin: autoRelated.map((r: any) => r._id) },
+            categories: product.category,
+            status: 'active',
+            isVisible: true,
+          })
+            .select('name slug images price type category priceRange')
+            .populate('category', 'name slug')
+            .sort({ salesCount: -1 })
+            .limit(8 - autoRelated.length)
+            .lean();
+          autoRelated = [...autoRelated, ...sameCat];
+        }
+      }
+    }
+
     return {
       ...product.toObject(),
       priceRange,
       pricingRules: pricingRules.length > 0 ? pricingRules[0] : null,
       variants,
+      relatedProducts: autoRelated,
     };
   },
 

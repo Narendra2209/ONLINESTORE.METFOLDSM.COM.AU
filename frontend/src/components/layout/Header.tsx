@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ShoppingCart, User, Search, Menu, X, ChevronDown, LogOut, Phone } from 'lucide-react';
+import { ShoppingCart, User, Search, Menu, X, ChevronDown, LogOut, Phone, LayoutDashboard } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useCartStore } from '@/store/cartStore';
 import { cn } from '@/lib/utils';
@@ -183,14 +183,6 @@ export default function Header() {
                     <Link href="/account/orders" className="flex items-center gap-2 px-4 py-2.5 text-sm text-steel-600 hover:bg-steel-50 transition-colors">
                       My Orders
                     </Link>
-                    {isAdmin && (
-                      <>
-                        <div className="my-1 border-t border-steel-100" />
-                        <Link href="/admin" className="flex items-center gap-2 px-4 py-2.5 text-sm text-brand-600 hover:bg-brand-50 transition-colors font-medium">
-                          Admin Dashboard
-                        </Link>
-                      </>
-                    )}
                     <div className="my-1 border-t border-steel-100" />
                     <button
                       onClick={() => { logout(); router.push('/'); }}
@@ -209,6 +201,17 @@ export default function Header() {
               >
                 <User className="h-4 w-4 sm:h-5 sm:w-5" />
                 <span className="hidden xs:inline sm:inline">Sign In</span>
+              </Link>
+            )}
+
+            {/* Admin Dashboard — left of cart, only for admin users */}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-1.5 rounded-xl px-2 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm font-medium text-brand-600 hover:bg-brand-50 transition-colors"
+              >
+                <LayoutDashboard className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="hidden md:inline">Admin</span>
               </Link>
             )}
 

@@ -521,7 +521,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
           </div>
         )}
 
-        {/* 2a. COLOUR selector — standalone for products without Material variation (screws, rivets) */}
+        {/* 2a. COLOUR selector — standalone for products without Material variation */}
         {!hasMaterialVariation && standaloneColours.length > 1 && (
           <div>
             <label className="mb-2 block text-sm font-semibold text-steel-700">

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { Product } from '@/types/product';
 import { productApi } from '@/services/product.service';
 import ProductConfigurator from '@/components/product/ProductConfigurator';
@@ -172,6 +173,48 @@ export default function ProductDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Related Products / Accessories */}
+        {product.relatedProducts && product.relatedProducts.length > 0 && (
+          <div className="mt-8 sm:mt-14 border-t border-steel-100 pt-8">
+            <h2 className="text-lg sm:text-xl font-bold text-steel-900 mb-5">Related Products & Accessories</h2>
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+              {product.relatedProducts.map((rp: any) => {
+                const img = rp.images?.find((i: any) => i.isDefault) || rp.images?.[0];
+                return (
+                  <Link
+                    key={rp._id}
+                    href={`/products/${rp.slug}`}
+                    className="group flex flex-col rounded-xl border border-steel-100 bg-white overflow-hidden hover:shadow-lg hover:-translate-y-0.5 hover:border-brand-200 transition-all duration-300"
+                  >
+                    <div className="aspect-[4/3] bg-steel-50 overflow-hidden">
+                      {img?.url ? (
+                        <img src={img.url} alt={img.alt || rp.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <Package className="h-10 w-10 text-steel-200" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3 sm:p-4">
+                      {rp.category && (
+                        <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-wider text-steel-400 mb-0.5">{rp.category.name}</span>
+                      )}
+                      <h3 className="text-sm sm:text-base font-bold text-steel-900 group-hover:text-brand-600 transition-colors line-clamp-2 leading-snug">
+                        {rp.name}
+                      </h3>
+                      {rp.price && (
+                        <p className="mt-2 text-sm font-bold text-steel-900">
+                          ${rp.price.toFixed(2)}
+                        </p>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Tabs: Description, Specifications */}
         <div className="mt-8 sm:mt-14 border-t border-steel-100">

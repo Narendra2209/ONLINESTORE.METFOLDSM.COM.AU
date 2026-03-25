@@ -17,16 +17,14 @@ export default function FlashingPage() {
           ]}
         />
 
-        <div className="mt-6 grid grid-cols-1 gap-10 lg:grid-cols-2">
-          {/* Left: Info & Diagram Preview */}
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
+          {/* Left: Info (narrow) */}
           <div>
-            <h1 className="text-3xl font-bold text-steel-900 tracking-tight leading-tight">
+            <h1 className="text-xl font-bold text-steel-900 tracking-tight leading-tight">
               Custom Flashing
             </h1>
-            <p className="mt-3 text-steel-600 leading-relaxed">
-              Design your custom flashing profile by drawing the cross-section shape.
-              Add points to define the bends, enter your required lengths, and we will
-              calculate the total girth, number of folds, and price automatically.
+            <p className="mt-2 text-sm text-steel-600 leading-relaxed">
+              Draw your cross-section shape, enter lengths, and we calculate the price automatically.
             </p>
 
             <div className="mt-6 rounded-2xl bg-brand-50 border border-brand-100 p-5">

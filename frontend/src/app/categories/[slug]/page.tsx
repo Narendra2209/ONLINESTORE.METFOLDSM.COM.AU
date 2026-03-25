@@ -23,7 +23,7 @@ export default function CategoryPage() {
       try {
         const [catData, prodResponse] = await Promise.all([
           productApi.getCategoryBySlug(slug),
-          productApi.getProducts({ category: slug, limit: 24, sortBy: 'best_sellers' }),
+          productApi.getProducts({ category: slug, limit: 24, sortBy: 'name' }),
         ]);
         setCategory(catData);
         setProducts(prodResponse.data);
