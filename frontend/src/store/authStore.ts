@@ -108,8 +108,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { data } = await api.get('/auth/me');
       set({ user: normalizeUser(data.data), isAuthenticated: true });
     } catch {
+      // Token expired or invalid — silently clear, don't force logout
+      // User can continue browsing and adding to cart without login
       localStorage.removeItem('accessToken');
-      set({ user: null, isAuthenticated: false });
+      set({ user: null, isAuthenticated: false, isLoading: false });
     } finally {
       set({ isLoading: false });
     }

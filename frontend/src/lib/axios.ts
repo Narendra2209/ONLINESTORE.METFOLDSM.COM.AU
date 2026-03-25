@@ -72,10 +72,9 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
+        // Don't auto-logout or redirect — only explicit Sign Out should clear the session
+        // Just remove the expired token silently
         localStorage.removeItem('accessToken');
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
-        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

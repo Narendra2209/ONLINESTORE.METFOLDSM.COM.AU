@@ -240,17 +240,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
     setSelectedAttributes(newAttrs);
   };
 
-  const requireLogin = () => {
-    if (!isAuthenticated) {
-      toast.error('You need to login to add items to cart');
-      router.push('/login');
-      return true;
-    }
-    return false;
-  };
-
   const handleAddToCart = () => {
-    if (requireLogin()) return;
 
     let unitPrice: number;
     let lineTotal: number;
@@ -333,7 +323,6 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
             className="flex-1"
             leftIcon={<ShoppingCart className="h-5 w-5" />}
             onClick={() => {
-              if (requireLogin()) return;
               addItem({
                 _id: '',
                 product: {
@@ -353,7 +342,6 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
             Add to Cart
           </Button>
           <Button variant="outline" size="lg" leftIcon={<Zap className="h-5 w-5" />} onClick={() => {
-            if (requireLogin()) return;
             addItem({
               _id: '',
               product: {
@@ -478,7 +466,6 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
 
     // Override handleAddToCart to include selectedColour
     const handleVariantAddToCart = () => {
-      if (requireLogin()) return;
       if (!matchedVariant) return;
 
       const attrEntries = matchedVariant.attributes

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShoppingCart, Zap, Trash2, RotateCcw } from 'lucide-react';
+import { ShoppingCart, Zap, RotateCcw, ChevronDown } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useCartStore } from '@/store/cartStore';
 import { cn } from '@/lib/utils';
@@ -17,8 +17,12 @@ interface Point {
 }
 
 interface Segment {
-  lengthMm: number; // length in mm
+  lengthMm: number;
 }
+
+type FoldType = 'Nothing' | 'Hook Fold' | 'Squash Fold' | 'Semi Squash Fold';
+
+const FOLD_OPTIONS: FoldType[] = ['Nothing', 'Hook Fold', 'Squash Fold', 'Semi Squash Fold'];
 
 // Material → base price per linear metre (AUD)
 const MATERIAL_PRICING: Record<string, number> = {
@@ -31,14 +35,14 @@ const MATERIAL_PRICING: Record<string, number> = {
 
 const COLOUR_OPTIONS: Record<string, string[]> = {
   'Colorbond': [
-    'Basalt', 'Classic Cream', 'Cottage Green', 'Deep Ocean', 'Dune',
-    'Evening Haze', 'Gully', 'Ironstone', 'Jasper', 'Manor Red',
-    'Monument', 'Night Sky', 'Pale Eucalyptus', 'Paperbark',
-    'Shale Grey', 'Surfmist', 'Terrain', 'Wallaby',
-    'Windspray', 'Woodland Grey', 'Cove', 'Mangrove',
+    'Basalt', 'Classic Cream', 'Cottage Green', 'Cove', 'Deep Ocean', 'Dover White', 'Dune',
+    'Evening Haze', 'Gully', 'Ironstone', 'Jasper', 'Mangrove', 'Manor Red',
+    'Monument', 'Night Sky', 'Pale Eucalypt', 'Paperbark',
+    'Shale Grey', 'Southerly', 'Surfmist', 'Terrain', 'Wallaby',
+    'Windspray', 'Woodland Grey',
   ],
   'Matt Colorbond': ['Basalt', 'Bluegum', 'Dune', 'Monument', 'Shale Grey', 'Surfmist'],
-  'Ultra Colorbond': ['Dune', 'Monument', 'Shale Grey', 'Wallaby', 'Woodland Grey', 'Surfmist', 'Windspray'],
+  'Ultra Colorbond': ['Basalt', 'Cove', 'Deep Ocean', 'Dune', 'Monument', 'Shale Grey', 'Surfmist', 'Wallaby', 'Windspray', 'Woodland Grey'],
   'Galvanised': ['Galvanised'],
   'Zinc': ['Zinc'],
 };
@@ -52,13 +56,20 @@ const GAUGE_MULTIPLIERS: Record<string, number> = {
   '0.55mm': 1.30,
 };
 
+const FOLD_COST = 1.50;
+const FOLD_TYPE_COST: Record<FoldType, number> = {
+  'Nothing': 0,
+  'Hook Fold': 2.00,
+  'Squash Fold': 2.50,
+  'Semi Squash Fold': 3.00,
+};
+
 // ── HELPERS ──
 
 function formatCurrency(amount: number) {
   return `$${amount.toFixed(2)}`;
 }
 
-// Convert diagram points to visual coordinates
 function pointsToSvgPath(points: Point[]): string {
   if (points.length < 2) return '';
   return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
@@ -73,24 +84,35 @@ export default function FlashingConfigurator() {
 
   // Drawing state
   const [points, setPoints] = useState<Point[]>([
-    { x: 80, y: 200 },
-    { x: 80, y: 120 },
-    { x: 280, y: 120 },
-    { x: 280, y: 200 },
+    { x: 250, y: 150 },
   ]);
-  const [segments, setSegments] = useState<Segment[]>([
-    { lengthMm: 50 },
-    { lengthMm: 200 },
-    { lengthMm: 50 },
-  ]);
+  const [segments, setSegments] = useState<Segment[]>([]);
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
+  const wasDragging = useRef(false);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  // Fold state
+  const [startFold, setStartFold] = useState<FoldType>('Nothing');
+  const [startFoldMm, setStartFoldMm] = useState(0);
+  const [startFoldDir, setStartFoldDir] = useState<'Up' | 'Down'>('Up'); // Up=inside diagram, Down=outside diagram
+  const [startFoldAngle, setStartFoldAngle] = useState(140); // default Hook=140, Squash=180
+  const [endFold, setEndFold] = useState<FoldType>('Nothing');
+  const [endFoldMm, setEndFoldMm] = useState(0);
+  const [endFoldDir, setEndFoldDir] = useState<'Up' | 'Down'>('Up');
+  const [endFoldAngle, setEndFoldAngle] = useState(140);
+  const [showStartFoldMenu, setShowStartFoldMenu] = useState(false);
+  const [showEndFoldMenu, setShowEndFoldMenu] = useState(false);
+
+  // Angle at each interior fold point (index maps to interior point index: points[1], points[2], ...)
+  const [foldAngles, setFoldAngles] = useState<number[]>([]);
 
   // Config state
   const [material, setMaterial] = useState('Colorbond');
   const [colour, setColour] = useState('');
+  const [colourSide, setColourSide] = useState<'Inside' | 'Outside'>('Outside'); // Which side has the colour
   const [gauge, setGauge] = useState('0.42mm');
   const [quantity, setQuantity] = useState(1);
+  const [tagName, setTagName] = useState('');
 
   // Keep segments array in sync with points count
   useEffect(() => {
@@ -102,6 +124,18 @@ export default function FlashingConfigurator() {
       setSegments(newSegments);
     }
   }, [points.length, segments]);
+
+  // Keep foldAngles in sync with interior points count
+  useEffect(() => {
+    const interiorCount = Math.max(0, points.length - 2);
+    if (foldAngles.length !== interiorCount) {
+      const newAngles: number[] = [];
+      for (let i = 0; i < interiorCount; i++) {
+        newAngles.push(foldAngles[i] ?? 90); // default 90°
+      }
+      setFoldAngles(newAngles);
+    }
+  }, [points.length, foldAngles]);
 
   // Reset colour when material changes
   useEffect(() => {
@@ -116,8 +150,10 @@ export default function FlashingConfigurator() {
 
   const baseRatePerMetre = MATERIAL_PRICING[material] || 18;
   const gaugeMultiplier = GAUGE_MULTIPLIERS[gauge] || 1.0;
-  const foldCost = foldCount * 1.50; // $1.50 per fold
-  const unitPrice = (baseRatePerMetre * gaugeMultiplier * totalGirthMetres) + foldCost;
+  const foldCost = foldCount * FOLD_COST;
+  const startFoldCost = FOLD_TYPE_COST[startFold] || 0;
+  const endFoldCost = FOLD_TYPE_COST[endFold] || 0;
+  const unitPrice = (baseRatePerMetre * gaugeMultiplier * totalGirthMetres) + foldCost + startFoldCost + endFoldCost;
   const lineTotal = unitPrice * quantity;
 
   // ── DRAWING HANDLERS ──
@@ -132,11 +168,15 @@ export default function FlashingConfigurator() {
   }, []);
 
   const handleSvgClick = useCallback((e: React.MouseEvent) => {
+    // Don't add a point if we just finished dragging
+    if (wasDragging.current) { wasDragging.current = false; return; }
     if (draggingIdx !== null) return;
     const target = e.target as SVGElement;
     if (target.closest('.point-handle')) return;
 
     const pt = getSvgPoint(e);
+
+    // If only 1 point exists, this click adds the second point (first line)
     setPoints((prev) => [...prev, pt]);
     setSegments((prev) => [...prev, { lengthMm: 50 }]);
   }, [draggingIdx, getSvgPoint]);
@@ -144,10 +184,12 @@ export default function FlashingConfigurator() {
   const handlePointMouseDown = useCallback((idx: number, e: React.MouseEvent) => {
     e.stopPropagation();
     setDraggingIdx(idx);
+    wasDragging.current = false;
   }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (draggingIdx === null) return;
+    wasDragging.current = true;
     const pt = getSvgPoint(e);
     setPoints((prev) => {
       const next = [...prev];
@@ -157,34 +199,39 @@ export default function FlashingConfigurator() {
   }, [draggingIdx, getSvgPoint]);
 
   const handleMouseUp = useCallback(() => {
-    setDraggingIdx(null);
-  }, []);
+    if (draggingIdx !== null) {
+      setDraggingIdx(null);
+    }
+  }, [draggingIdx]);
 
-  const removePoint = (idx: number) => {
+  // Remove first segment/point
+  const removeFirst = () => {
     if (points.length <= 2) return;
-    setPoints((prev) => prev.filter((_, i) => i !== idx));
-    setSegments((prev) => {
-      const next = [...prev];
-      // Remove the segment that was connected to this point
-      if (idx === 0) next.splice(0, 1);
-      else if (idx >= prev.length) next.splice(prev.length - 1, 1);
-      else next.splice(idx - 1, 1);
-      return next;
-    });
+    setPoints((prev) => prev.slice(1));
+    setSegments((prev) => prev.slice(1));
+  };
+
+  // Remove last segment/point
+  const removeLast = () => {
+    if (points.length <= 2) return;
+    setPoints((prev) => prev.slice(0, -1));
+    setSegments((prev) => prev.slice(0, -1));
   };
 
   const resetDiagram = () => {
-    setPoints([
-      { x: 80, y: 200 },
-      { x: 80, y: 120 },
-      { x: 280, y: 120 },
-      { x: 280, y: 200 },
-    ]);
-    setSegments([
-      { lengthMm: 50 },
-      { lengthMm: 200 },
-      { lengthMm: 50 },
-    ]);
+    setPoints([{ x: 250, y: 150 }]);
+    setSegments([]);
+    setStartFold('Nothing');
+    setStartFoldMm(0);
+    setStartFoldDir('Up');
+    setStartFoldAngle(140);
+    setEndFold('Nothing');
+    setEndFoldMm(0);
+    setEndFoldDir('Up');
+    setEndFoldAngle(140);
+    setFoldAngles([]);
+    setColourSide('Outside');
+    setTagName('');
   };
 
   const updateSegmentLength = (idx: number, value: number) => {
@@ -198,71 +245,208 @@ export default function FlashingConfigurator() {
   // ── ADD TO CART ──
 
   const handleAddToCart = () => {
-    if (!isAuthenticated) {
-      toast.error('You need to login to add items to cart');
-      router.push('/login');
+    if (points.length < 2) {
+      toast.error('Please draw at least one line on the diagram');
+      return;
+    }
+    if (!material) {
+      toast.error('Please select a material');
       return;
     }
     if (!colour) {
       toast.error('Please select a colour');
       return;
     }
+    if (!gauge) {
+      toast.error('Please select a gauge');
+      return;
+    }
 
+    const label = tagName.trim() || `Custom Flashing`;
     const attrs = [
+      { attributeName: 'Tag Name', value: label },
       { attributeName: 'Material', value: material },
       { attributeName: 'Colour', value: colour },
+      { attributeName: 'Colour Side', value: colourSide },
       { attributeName: 'Gauge', value: gauge },
       { attributeName: 'Total Girth', value: `${totalGirth}mm` },
       { attributeName: 'Folds', value: String(foldCount) },
+      ...(startFold !== 'Nothing' ? [{ attributeName: 'Start Fold', value: `${startFold} — ${startFoldMm}mm, ${startFoldAngle}°, ${startFoldDir === 'Up' ? 'Inside' : 'Outside'}` }] : []),
+      ...(endFold !== 'Nothing' ? [{ attributeName: 'End Fold', value: `${endFold} — ${endFoldMm}mm, ${endFoldAngle}°, ${endFoldDir === 'Up' ? 'Inside' : 'Outside'}` }] : []),
+      ...foldAngles.map((angle, i) => ({
+        attributeName: `Fold ${i + 1} Angle`,
+        value: `${angle}°`,
+      })),
       ...segments.map((s, i) => ({
         attributeName: `Segment ${i + 1}`,
         value: `${s.lengthMm}mm`,
       })),
     ];
 
-    addItem({
-      _id: '',
-      product: {
-        _id: 'flashing-custom',
-        name: `Custom Flashing — ${material} ${colour}`,
-        slug: 'custom-flashing',
-        sku: `FLASH-${material.replace(/\s+/g, '').toUpperCase()}-${totalGirth}`,
-        images: [],
-      },
-      selectedAttributes: attrs,
-      pricingModel: 'per_piece',
-      unitPrice,
-      quantity,
-      lineTotal,
-    });
-    toast.success('Custom flashing added to cart!');
+    // Capture the diagram as an image for the cart
+    const diagramImage = captureDiagramImage();
+
+    try {
+      addItem({
+        _id: '',
+        product: {
+          _id: 'flashing-custom',
+          name: `${label} — ${material} ${colour}`,
+          slug: 'custom-flashing',
+          sku: `FLASH-${material.replace(/\s+/g, '').toUpperCase()}-${totalGirth}`,
+          images: diagramImage ? [{ url: diagramImage, alt: `${label} diagram` }] : [],
+        },
+        selectedAttributes: attrs,
+        pricingModel: 'per_piece',
+        unitPrice,
+        quantity,
+        lineTotal,
+      });
+      toast.success('Custom flashing added to cart!');
+    } catch (err) {
+      console.error('Add to cart error:', err);
+      toast.error('Failed to add to cart. Please try again.');
+    }
   };
 
   // ── RENDER ──
 
   const availableColours = COLOUR_OPTIONS[material] || [];
 
+  // Capture SVG diagram as a data URL image for cart
+  const captureDiagramImage = (): string => {
+    try {
+      const svg = svgRef.current;
+      if (!svg) return '';
+      const svgData = new XMLSerializer().serializeToString(svg);
+      // Encode properly to handle non-ASCII characters (arrows, degree symbols, etc.)
+      const encoded = encodeURIComponent(svgData);
+      return `data:image/svg+xml,${encoded}`;
+    } catch {
+      return '';
+    }
+  };
+
+  // Draw fold indicator at start/end using actual angle
+  // Up = inside the diagram, Down = outside the diagram
+  const renderFoldIndicator = (point: Point, foldType: FoldType, isStart: boolean) => {
+    if (foldType === 'Nothing') return null;
+    const foldMm = isStart ? startFoldMm : endFoldMm;
+    const foldDir = isStart ? startFoldDir : endFoldDir;
+    const foldAngle = isStart ? startFoldAngle : endFoldAngle;
+    if (foldMm <= 0) return null;
+
+    const secondPoint = isStart ? points[1] : points[points.length - 2];
+    if (!secondPoint) return null;
+
+    // Direction along the line FROM the endpoint TOWARD its neighbor
+    const dx = secondPoint.x - point.x;
+    const dy = secondPoint.y - point.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len === 0) return null;
+
+    // Angle of the line segment in radians
+    const lineAngle = Math.atan2(dy, dx);
+
+    // Perpendicular direction sign: Up (inside) vs Down (outside)
+    const sign = foldDir === 'Up' ? -1 : 1;
+
+    // Scale fold line length proportionally (1mm = ~0.3px in SVG, min 8px)
+    const foldLen = Math.max(8, foldMm * 0.3);
+
+    // The fold goes perpendicular to the line (90 degrees)
+    const perpAngle = lineAngle + (sign * Math.PI / 2);
+    const foldEndX = point.x + Math.cos(perpAngle) * foldLen;
+    const foldEndY = point.y + Math.sin(perpAngle) * foldLen;
+
+    // The return bend uses the user's angle
+    // Convert fold angle to radians — angle is measured from the fold line back
+    const returnLen = foldLen * 0.6;
+    const angleRad = (foldAngle * Math.PI) / 180;
+
+    // Label
+    const foldLabel = foldType === 'Hook Fold' ? 'HF' : foldType === 'Squash Fold' ? 'SF' : 'SSF';
+
+    let foldPath = '';
+    if (foldType === 'Hook Fold') {
+      // Hook: go perpendicular, then bend back at the specified angle
+      const returnAngle = perpAngle + Math.PI - angleRad;
+      const returnX = foldEndX + Math.cos(returnAngle) * returnLen;
+      const returnY = foldEndY + Math.sin(returnAngle) * returnLen;
+      foldPath = `M ${point.x} ${point.y} L ${foldEndX} ${foldEndY} L ${returnX} ${returnY}`;
+    } else if (foldType === 'Squash Fold') {
+      // Squash: go perpendicular, then fold flat (angle determines how flat)
+      const returnAngle = perpAngle + angleRad - Math.PI;
+      const returnX = foldEndX + Math.cos(returnAngle) * returnLen;
+      const returnY = foldEndY + Math.sin(returnAngle) * returnLen;
+      foldPath = `M ${point.x} ${point.y} L ${foldEndX} ${foldEndY} L ${returnX} ${returnY}`;
+    } else if (foldType === 'Semi Squash Fold') {
+      // Semi squash: partial fold back
+      const returnAngle = perpAngle + (Math.PI - angleRad) * 0.5;
+      const returnX = foldEndX + Math.cos(returnAngle) * returnLen;
+      const returnY = foldEndY + Math.sin(returnAngle) * returnLen;
+      foldPath = `M ${point.x} ${point.y} L ${foldEndX} ${foldEndY} L ${returnX} ${returnY}`;
+    }
+
+    return (
+      <g key={`fold-${isStart ? 'start' : 'end'}`}>
+        <path d={foldPath} fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Fold label with mm and angle */}
+        <text
+          x={foldEndX + (foldEndX - point.x) * 0.3}
+          y={foldEndY + (foldEndY - point.y) * 0.3}
+          textAnchor="middle"
+          className="text-[7px] font-bold fill-red-600 select-none pointer-events-none"
+        >
+          {foldLabel} {foldMm}mm
+        </text>
+        <text
+          x={foldEndX + (foldEndX - point.x) * 0.3}
+          y={foldEndY + (foldEndY - point.y) * 0.3 + 9}
+          textAnchor="middle"
+          className="text-[6px] fill-red-500 select-none pointer-events-none"
+        >
+          {foldAngle}°
+        </text>
+      </g>
+    );
+  };
+
   return (
-    <div className="space-y-8">
-      {/* ── DIAGRAM AREA ── */}
+    <div className="space-y-6 sm:space-y-8">
+      {/* ── TAG NAME ── */}
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <label className="mb-1.5 block text-sm font-bold text-steel-900">
+          Tag Name <span className="text-steel-400 font-normal text-xs">(label for this flashing)</span>
+        </label>
+        <input
+          type="text"
+          value={tagName}
+          onChange={(e) => setTagName(e.target.value)}
+          placeholder="e.g. Front Fascia, Garage Barge, Ridge Cap..."
+          className="w-full max-w-md rounded-lg border border-steel-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+        />
+      </div>
+
+      {/* ── DIAGRAM AREA + RIGHT SIDEBAR ── */}
+      <div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3">
           <h3 className="text-lg font-bold text-steel-900">Draw Your Flashing Profile</h3>
-          <div className="flex gap-2">
-            <button
-              onClick={resetDiagram}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-steel-600 bg-steel-100 rounded-lg hover:bg-steel-200 transition-colors"
-            >
-              <RotateCcw className="h-3.5 w-3.5" /> Reset
-            </button>
-          </div>
+          <button
+            onClick={resetDiagram}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-steel-600 bg-steel-100 rounded-lg hover:bg-steel-200 transition-colors"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Reset
+          </button>
         </div>
 
-        <div className="relative rounded-2xl border-2 border-dashed border-steel-300 bg-steel-50/50 overflow-hidden">
+        <div className="flex gap-3">
+        {/* LEFT: Diagram */}
+        <div className="flex-1 relative rounded-2xl border-2 border-dashed border-steel-300 bg-steel-50/50 overflow-hidden">
           <svg
             ref={svgRef}
             viewBox="0 0 500 300"
-            className="w-full h-[300px] md:h-[400px] cursor-crosshair"
+            className="w-full h-[250px] sm:h-[300px] md:h-[400px] cursor-crosshair"
             onClick={handleSvgClick}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -288,18 +472,54 @@ export default function FlashingConfigurator() {
               />
             )}
 
-            {/* Thickness visualization */}
-            {points.length >= 2 && (
-              <path
-                d={pointsToSvgPath(points)}
-                fill="none"
-                stroke="#93c5fd"
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity="0.3"
-              />
-            )}
+            {/* Colour side indicator — coloured offset line on the colour side */}
+            {points.length >= 2 && points.map((p, i) => {
+              if (i === points.length - 1) return null;
+              const next = points[i + 1];
+              const dx = next.x - p.x;
+              const dy = next.y - p.y;
+              const len = Math.sqrt(dx * dx + dy * dy) || 1;
+
+              // Perpendicular offset direction
+              const perpX = -dy / len;
+              const perpY = dx / len;
+              const sign = colourSide === 'Inside' ? 1 : -1;
+              const offset = 6; // pixels offset from main line
+
+              const x1 = p.x + perpX * offset * sign;
+              const y1 = p.y + perpY * offset * sign;
+              const x2 = next.x + perpX * offset * sign;
+              const y2 = next.y + perpY * offset * sign;
+
+              // Midpoint for label
+              const mx = (x1 + x2) / 2 + perpX * 6 * sign;
+              const my = (y1 + y2) / 2 + perpY * 6 * sign;
+
+              return (
+                <g key={`colour-side-${i}`}>
+                  {/* Coloured dashed line on the colour side */}
+                  <line
+                    x1={x1} y1={y1} x2={x2} y2={y2}
+                    stroke={colourSide === 'Inside' ? '#dc2626' : '#2563eb'}
+                    strokeWidth="1.5"
+                    strokeDasharray="4 3"
+                    opacity="0.6"
+                  />
+                  {/* Small "C" label on first segment only */}
+                  {i === 0 && (
+                    <text
+                      x={mx} y={my}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="text-[7px] font-bold select-none pointer-events-none"
+                      fill={colourSide === 'Inside' ? '#dc2626' : '#2563eb'}
+                    >
+                      {colourSide === 'Inside' ? '← COLOUR INSIDE' : '← COLOUR OUTSIDE'}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
 
             {/* Segment labels */}
             {points.length >= 2 && points.map((p, i) => {
@@ -328,59 +548,285 @@ export default function FlashingConfigurator() {
                     textAnchor="middle"
                     className="text-[10px] font-bold fill-blue-700 select-none pointer-events-none"
                   >
-                    {seg.lengthMm}mm
+                    {seg.lengthMm}
                   </text>
                 </g>
               );
             })}
 
-            {/* Fold indicators */}
+            {/* Fold indicators at interior points — black triangle showing colour side + angle */}
             {points.map((p, i) => {
               if (i === 0 || i === points.length - 1) return null;
+              if (points.length < 3) return null;
+
+              const prev = points[i - 1];
+              const next = points[i + 1];
+
+              // Direction vectors
+              const dx1 = p.x - prev.x;
+              const dy1 = p.y - prev.y;
+              const dx2 = next.x - p.x;
+              const dy2 = next.y - p.y;
+
+              // Bisector direction (points inward)
+              const len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1) || 1;
+              const len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2) || 1;
+              const nx1 = dx1 / len1;
+              const ny1 = dy1 / len1;
+              const nx2 = dx2 / len2;
+              const ny2 = dy2 / len2;
+
+              // Perpendicular of incoming segment (left side = inside)
+              const perpX = -ny1;
+              const perpY = nx1;
+
+              // Triangle pointing to the colour side
+              const triSize = 7;
+              const sign = colourSide === 'Inside' ? 1 : -1;
+              const triTipX = p.x + perpX * triSize * sign;
+              const triTipY = p.y + perpY * triSize * sign;
+              const triBaseX1 = p.x + nx1 * 4;
+              const triBaseY1 = p.y + ny1 * 4;
+              const triBaseX2 = p.x - nx1 * 4;
+              const triBaseY2 = p.y - ny1 * 4;
+
+              const angle = foldAngles[i - 1] ?? 90;
+
               return (
                 <g key={`fold-${i}`}>
-                  <circle cx={p.x} cy={p.y} r="6" fill="#f59e0b" stroke="#d97706" strokeWidth="1.5" opacity="0.8" />
+                  {/* Black filled triangle showing colour side */}
+                  <polygon
+                    points={`${triTipX},${triTipY} ${triBaseX1},${triBaseY1} ${triBaseX2},${triBaseY2}`}
+                    fill="#000000"
+                    stroke="#000000"
+                    strokeWidth="0.5"
+                  />
+                  {/* Angle label */}
                   <text
-                    x={p.x}
-                    y={p.y - 12}
+                    x={p.x - perpX * sign * 12}
+                    y={p.y - perpY * sign * 12}
                     textAnchor="middle"
-                    className="text-[8px] font-semibold fill-amber-700 select-none pointer-events-none"
+                    className="text-[8px] font-bold fill-red-600 select-none pointer-events-none"
                   >
-                    Fold {i}
+                    {angle}°
                   </text>
                 </g>
               );
             })}
 
-            {/* Draggable points */}
-            {points.map((p, i) => (
-              <g key={`pt-${i}`} className="point-handle" style={{ cursor: 'grab' }}>
-                <circle
-                  cx={p.x}
-                  cy={p.y}
-                  r="8"
-                  fill={draggingIdx === i ? '#2563eb' : 'white'}
-                  stroke="#2563eb"
-                  strokeWidth="2.5"
-                  onMouseDown={(e) => handlePointMouseDown(i, e)}
-                />
-                <text
-                  x={p.x}
-                  y={p.y + 3.5}
-                  textAnchor="middle"
-                  className="text-[8px] font-bold fill-blue-600 select-none pointer-events-none"
-                >
-                  {i + 1}
+            {/* Start/End fold type indicators */}
+            {points.length >= 2 && renderFoldIndicator(points[0], startFold, true)}
+            {points.length >= 2 && renderFoldIndicator(points[points.length - 1], endFold, false)}
+
+            {/* Draggable points — endpoints have no visible dot (just drag handle), middle points are blue circles */}
+            {points.map((p, i) => {
+              const isEndpoint = i === 0 || i === points.length - 1;
+              const isOnlyPoint = points.length === 1;
+              return (
+                <g key={`pt-${i}`} className="point-handle" style={{ cursor: 'grab' }}>
+                  {/* Invisible larger hit area for dragging */}
+                  <circle
+                    cx={p.x}
+                    cy={p.y}
+                    r="12"
+                    fill="transparent"
+                    onMouseDown={(e) => handlePointMouseDown(i, e)}
+                  />
+                  {/* Visible dot — only for middle points and the initial single dot */}
+                  {(!isEndpoint || isOnlyPoint) && (
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r={isOnlyPoint ? 6 : 8}
+                      fill={draggingIdx === i ? '#2563eb' : isOnlyPoint ? '#16a34a' : 'white'}
+                      stroke={isOnlyPoint ? '#15803d' : '#2563eb'}
+                      strokeWidth="2.5"
+                      onMouseDown={(e) => handlePointMouseDown(i, e)}
+                    />
+                  )}
+                  {!isEndpoint && !isOnlyPoint && (
+                    <text
+                      x={p.x}
+                      y={p.y + 3.5}
+                      textAnchor="middle"
+                      className="text-[8px] font-bold fill-blue-600 select-none pointer-events-none"
+                    >
+                      {i}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+
+            {/* Start/End labels — small text only, no dots */}
+            {points.length >= 2 && (
+              <>
+                <text x={points[0].x} y={points[0].y + 14} textAnchor="middle" className="text-[7px] font-semibold fill-steel-500 select-none pointer-events-none">
+                  S
                 </text>
-              </g>
-            ))}
+                <text x={points[points.length - 1].x} y={points[points.length - 1].y + 14} textAnchor="middle" className="text-[7px] font-semibold fill-steel-500 select-none pointer-events-none">
+                  E
+                </text>
+              </>
+            )}
 
             {/* Instructions */}
             <text x="250" y="290" textAnchor="middle" className="text-[10px] fill-steel-400 select-none pointer-events-none">
-              Click anywhere to add a point. Drag points to adjust. Enter lengths below.
+              Click to add points. Drag points to adjust shape.
             </text>
           </svg>
         </div>
+
+        {/* RIGHT: Controls sidebar */}
+        <div className="w-[160px] flex-shrink-0 flex flex-col gap-2">
+          {/* Colour Side Toggle */}
+          <div className="rounded-lg border border-steel-200 bg-white p-2">
+            <p className="text-[10px] font-bold text-steel-700 mb-1.5 text-center">Colour Side</p>
+            <div className="flex flex-col gap-1">
+              <button
+                onClick={() => setColourSide('Inside')}
+                className={`w-full py-1.5 text-xs font-semibold rounded transition-colors ${
+                  colourSide === 'Inside' ? 'bg-red-500 text-white' : 'bg-steel-100 text-steel-600 hover:bg-steel-200'
+                }`}
+              >
+                Inside
+              </button>
+              <button
+                onClick={() => setColourSide('Outside')}
+                className={`w-full py-1.5 text-xs font-semibold rounded transition-colors ${
+                  colourSide === 'Outside' ? 'bg-blue-500 text-white' : 'bg-steel-100 text-steel-600 hover:bg-steel-200'
+                }`}
+              >
+                Outside
+              </button>
+            </div>
+          </div>
+
+          {/* Remove First */}
+          <button
+            onClick={removeFirst}
+            disabled={points.length <= 2}
+            className={cn(
+              'w-full flex items-center justify-center gap-1 px-2 py-2 text-[11px] font-semibold rounded-lg transition-colors',
+              points.length <= 2 ? 'bg-steel-100 text-steel-400 cursor-not-allowed' : 'bg-pink-500 text-white hover:bg-pink-600'
+            )}
+          >
+            Remove First
+          </button>
+
+          {/* Remove Last */}
+          <button
+            onClick={removeLast}
+            disabled={points.length <= 2}
+            className={cn(
+              'w-full flex items-center justify-center gap-1 px-2 py-2 text-[11px] font-semibold rounded-lg transition-colors',
+              points.length <= 2 ? 'bg-steel-100 text-steel-400 cursor-not-allowed' : 'bg-green-500 text-white hover:bg-green-600'
+            )}
+          >
+            Remove Last
+          </button>
+
+          {/* Start Fold */}
+          <div className="relative">
+            <button
+              onClick={() => { setShowStartFoldMenu(!showStartFoldMenu); setShowEndFoldMenu(false); }}
+              className="w-full flex items-center justify-center gap-1 px-2 py-2 text-[11px] font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            >
+              Start Fold <ChevronDown className="h-3 w-3" />
+            </button>
+            {showStartFoldMenu && (
+              <div className="absolute left-0 top-full z-50 mt-1 w-full min-w-[160px] rounded-lg bg-white border border-steel-200 shadow-xl py-1">
+                {FOLD_OPTIONS.map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => {
+                      setStartFold(opt); setShowStartFoldMenu(false);
+                      if (opt === 'Hook Fold') setStartFoldAngle(140);
+                      else if (opt === 'Squash Fold') setStartFoldAngle(180);
+                      else if (opt === 'Semi Squash Fold') setStartFoldAngle(160);
+                    }}
+                    className={cn('block w-full text-left px-3 py-1.5 text-xs hover:bg-steel-50', startFold === opt ? 'font-bold text-brand-600 bg-brand-50' : 'text-steel-700')}
+                  >{opt}</button>
+                ))}
+              </div>
+            )}
+            {startFold !== 'Nothing' && (
+              <div className="mt-1 grid grid-cols-2 gap-1">
+                <div className="flex items-center gap-0.5">
+                  <input type="number" min={0} value={startFoldMm} onChange={(e) => setStartFoldMm(Math.max(0, parseInt(e.target.value) || 0))} className="w-full rounded border border-steel-300 px-1 py-1 text-[10px] text-center" />
+                  <span className="text-[9px] text-steel-500">mm</span>
+                </div>
+                <div className="flex items-center gap-0.5">
+                  <input type="number" min={0} max={360} value={startFoldAngle} onChange={(e) => setStartFoldAngle(Math.max(0, Math.min(360, parseInt(e.target.value) || 0)))} className="w-full rounded border border-steel-300 px-1 py-1 text-[10px] text-center" />
+                  <span className="text-[9px] text-steel-500">°</span>
+                </div>
+                <select value={startFoldDir} onChange={(e) => setStartFoldDir(e.target.value as 'Up' | 'Down')} className="col-span-2 rounded border border-steel-300 px-1 py-1 text-[10px]">
+                  <option value="Up">Up (Inside)</option>
+                  <option value="Down">Down (Outside)</option>
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* End Fold */}
+          <div className="relative">
+            <button
+              onClick={() => { setShowEndFoldMenu(!showEndFoldMenu); setShowStartFoldMenu(false); }}
+              className="w-full flex items-center justify-center gap-1 px-2 py-2 text-[11px] font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
+            >
+              End Fold <ChevronDown className="h-3 w-3" />
+            </button>
+            {showEndFoldMenu && (
+              <div className="absolute left-0 top-full z-50 mt-1 w-full min-w-[160px] rounded-lg bg-white border border-steel-200 shadow-xl py-1">
+                {FOLD_OPTIONS.map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => {
+                      setEndFold(opt); setShowEndFoldMenu(false);
+                      if (opt === 'Hook Fold') setEndFoldAngle(140);
+                      else if (opt === 'Squash Fold') setEndFoldAngle(180);
+                      else if (opt === 'Semi Squash Fold') setEndFoldAngle(160);
+                    }}
+                    className={cn('block w-full text-left px-3 py-1.5 text-xs hover:bg-steel-50', endFold === opt ? 'font-bold text-brand-600 bg-brand-50' : 'text-steel-700')}
+                  >{opt}</button>
+                ))}
+              </div>
+            )}
+            {endFold !== 'Nothing' && (
+              <div className="mt-1 grid grid-cols-2 gap-1">
+                <div className="flex items-center gap-0.5">
+                  <input type="number" min={0} value={endFoldMm} onChange={(e) => setEndFoldMm(Math.max(0, parseInt(e.target.value) || 0))} className="w-full rounded border border-steel-300 px-1 py-1 text-[10px] text-center" />
+                  <span className="text-[9px] text-steel-500">mm</span>
+                </div>
+                <div className="flex items-center gap-0.5">
+                  <input type="number" min={0} max={360} value={endFoldAngle} onChange={(e) => setEndFoldAngle(Math.max(0, Math.min(360, parseInt(e.target.value) || 0)))} className="w-full rounded border border-steel-300 px-1 py-1 text-[10px] text-center" />
+                  <span className="text-[9px] text-steel-500">°</span>
+                </div>
+                <select value={endFoldDir} onChange={(e) => setEndFoldDir(e.target.value as 'Up' | 'Down')} className="col-span-2 rounded border border-steel-300 px-1 py-1 text-[10px]">
+                  <option value="Up">Up (Inside)</option>
+                  <option value="Down">Down (Outside)</option>
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Quantity */}
+          <div className="rounded-lg border border-steel-200 bg-white p-2">
+            <p className="text-[10px] font-bold text-steel-700 mb-1.5 text-center">Quantity</p>
+            <div className="flex items-center rounded border border-steel-300">
+              <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="px-2 py-1 text-steel-600 hover:bg-steel-50 text-sm">-</button>
+              <input
+                type="number"
+                min={1}
+                value={quantity}
+                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-10 border-x border-steel-300 text-center py-1 text-xs"
+              />
+              <button onClick={() => setQuantity(quantity + 1)} className="px-2 py-1 text-steel-600 hover:bg-steel-50 text-sm">+</button>
+            </div>
+          </div>
+        </div>
+        </div>{/* end flex row */}
       </div>
 
       {/* ── SEGMENT LENGTHS ── */}
@@ -402,19 +848,38 @@ export default function FlashingConfigurator() {
                 />
                 <span className="text-xs text-steel-500 flex-shrink-0">mm</span>
               </div>
-              {points.length > 2 && (
-                <button
-                  onClick={() => removePoint(i < points.length - 1 ? i + 1 : i)}
-                  className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors flex-shrink-0"
-                  title="Remove point"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              )}
             </div>
           ))}
         </div>
       </div>
+
+      {/* ── FOLD ANGLES ── */}
+      {foldAngles.length > 0 && (
+        <div>
+          <h3 className="text-sm font-bold text-steel-900 mb-3">Fold Angles (°)</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {foldAngles.map((angle, i) => (
+              <div key={i} className="flex items-center gap-1.5">
+                <span className="flex items-center justify-center h-6 w-6 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold flex-shrink-0">
+                  F{i + 1}
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  max={360}
+                  value={angle}
+                  onChange={(e) => {
+                    const val = Math.max(0, Math.min(360, parseInt(e.target.value) || 0));
+                    setFoldAngles((prev) => { const n = [...prev]; n[i] = val; return n; });
+                  }}
+                  className="w-full rounded-lg border border-steel-300 px-2 py-1.5 text-sm text-center font-medium focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                />
+                <span className="text-xs text-steel-500 flex-shrink-0">°</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── MATERIAL & COLOUR ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -489,40 +954,44 @@ export default function FlashingConfigurator() {
         </div>
       </div>
 
-      {/* ── QUANTITY ── */}
-      <div>
-        <label className="mb-1.5 block text-sm font-bold text-steel-900">Quantity</label>
-        <div className="flex items-center rounded-lg border border-steel-300 w-fit">
-          <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="px-3 py-2 text-steel-600 hover:bg-steel-50">-</button>
-          <input
-            type="number"
-            min={1}
-            value={quantity}
-            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-            className="w-16 border-x border-steel-300 text-center py-2 text-sm"
-          />
-          <button onClick={() => setQuantity(quantity + 1)} className="px-3 py-2 text-steel-600 hover:bg-steel-50">+</button>
-        </div>
-      </div>
-
       {/* ── SUMMARY & PRICE ── */}
-      <div className="rounded-2xl bg-steel-50 border border-steel-200 p-6 space-y-4">
+      <div className="rounded-2xl bg-steel-50 border border-steel-200 p-4 sm:p-6 space-y-4">
         <h3 className="text-base font-bold text-steel-900">Order Summary</h3>
 
-        <div className="grid grid-cols-3 gap-4">
+        {tagName && (
+          <div className="text-sm text-brand-600 font-semibold">{tagName}</div>
+        )}
+
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
           <div className="text-center rounded-xl bg-white p-3 border border-steel-100">
-            <div className="text-2xl font-bold text-brand-600">{totalGirth}<span className="text-sm font-normal text-steel-500">mm</span></div>
+            <div className="text-xl sm:text-2xl font-bold text-brand-600">{totalGirth}<span className="text-xs sm:text-sm font-normal text-steel-500">mm</span></div>
             <div className="text-xs text-steel-500 mt-1">Total Girth</div>
           </div>
           <div className="text-center rounded-xl bg-white p-3 border border-steel-100">
-            <div className="text-2xl font-bold text-amber-600">{foldCount}</div>
+            <div className="text-xl sm:text-2xl font-bold text-amber-600">{foldCount}</div>
             <div className="text-xs text-steel-500 mt-1">Folds</div>
           </div>
           <div className="text-center rounded-xl bg-white p-3 border border-steel-100">
-            <div className="text-2xl font-bold text-steel-700">{segments.length}</div>
+            <div className="text-xl sm:text-2xl font-bold text-steel-700">{segments.length}</div>
             <div className="text-xs text-steel-500 mt-1">Segments</div>
           </div>
         </div>
+
+        {/* Fold types */}
+        {(startFold !== 'Nothing' || endFold !== 'Nothing') && (
+          <div className="flex flex-wrap gap-2">
+            {startFold !== 'Nothing' && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium bg-red-50 text-red-700 px-2.5 py-1 rounded-full border border-red-200">
+                Start: {startFold} — {startFoldMm}mm, {startFoldAngle}°, {startFoldDir === 'Up' ? 'Inside' : 'Outside'}
+              </span>
+            )}
+            {endFold !== 'Nothing' && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium bg-red-50 text-red-700 px-2.5 py-1 rounded-full border border-red-200">
+                End: {endFold} — {endFoldMm}mm, {endFoldAngle}°, {endFoldDir === 'Up' ? 'Inside' : 'Outside'}
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="border-t border-steel-200 pt-4 space-y-2">
           <div className="flex justify-between text-sm">
@@ -535,8 +1004,20 @@ export default function FlashingConfigurator() {
           </div>
           {foldCount > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-steel-600">Folds ({foldCount} x $1.50):</span>
+              <span className="text-steel-600">Folds ({foldCount} x ${FOLD_COST.toFixed(2)}):</span>
               <span className="font-medium">{formatCurrency(foldCost)}</span>
+            </div>
+          )}
+          {startFoldCost > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-steel-600">Start {startFold} ({startFoldMm}mm, {startFoldDir === 'Up' ? 'Inside' : 'Outside'}):</span>
+              <span className="font-medium">{formatCurrency(startFoldCost)}</span>
+            </div>
+          )}
+          {endFoldCost > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-steel-600">End {endFold} ({endFoldMm}mm, {endFoldDir === 'Up' ? 'Inside' : 'Outside'}):</span>
+              <span className="font-medium">{formatCurrency(endFoldCost)}</span>
             </div>
           )}
           <div className="flex justify-between text-sm">
@@ -569,7 +1050,6 @@ export default function FlashingConfigurator() {
           className="flex-1"
           leftIcon={<ShoppingCart className="h-5 w-5" />}
           onClick={handleAddToCart}
-          disabled={!colour}
         >
           Add to Cart
         </Button>
@@ -577,10 +1057,9 @@ export default function FlashingConfigurator() {
           variant="outline"
           size="lg"
           leftIcon={<Zap className="h-5 w-5" />}
-          disabled={!colour}
           onClick={() => {
             handleAddToCart();
-            if (isAuthenticated && colour) router.push('/cart');
+            if (colour) router.push('/cart');
           }}
         >
           Buy Now
