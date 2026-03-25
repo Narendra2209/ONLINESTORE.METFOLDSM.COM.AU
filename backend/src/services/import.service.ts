@@ -998,11 +998,10 @@ export const importService = {
         }
       }
 
-      // For non-roofsheet rows: if the COLOR column has a generic finish name
-      // (COLORBOND, MATT, GALV) instead of a specific colour, move it to finish_category
-      // so we can extract the real colour from description/SKU
+      // If the COLOR column has a generic finish name (COLORBOND, MATT, GALV)
+      // instead of a specific colour, move it to finish_category so real colour can be extracted
       const isRoofSheetRow = !!(roofSheet || (row as any).thickness);
-      if (!isRoofSheetRow && row.colour) {
+      if (row.colour) {
         const FINISH_NAMES = ['COLORBOND', 'MATT', 'MATT COLORBOND', 'GALV', 'GALVANISED', 'GALVANIZED', 'ZINCALUME', 'ZINC'];
         const colourUpper = String(row.colour).trim().toUpperCase();
         if (FINISH_NAMES.includes(colourUpper)) {
@@ -1027,8 +1026,8 @@ export const importService = {
         }
       }
 
-      // Fallback: extract colour from SKU suffix code (e.g., S65F-BG → Bluegum, RH-BS → Basalt)
-      if (!isRoofSheetRow && !row.colour) {
+      // Fallback: extract colour from SKU suffix code (e.g., S65F-BG → Bluegum, .42MINIC-BA → Basalt)
+      if (!row.colour) {
         const skuUpper = String(row.sku || '').trim().toUpperCase();
         const skuSuffixMatch = skuUpper.match(/[-]([A-Z]{2,3})$/);
         if (skuSuffixMatch) {
@@ -1043,6 +1042,10 @@ export const importService = {
             'ZIN': 'Zinc', 'GAL': 'Galvanised', 'RCO': 'Raw Colorbond',
             'MBA': 'Basalt', 'MBG': 'Bluegum', 'MBU': 'Bluegum', 'MDU': 'Dune', 'MMO': 'Monument', 'MSG': 'Shale Grey',
             'MSU': 'Surfmist', 'EZ': 'Evening Haze', 'BU': 'Bluegum', 'WA': 'Wallaby',
+            'CO': 'Cove', 'CV': 'Cove', 'TE': 'Terrain', 'MN': 'Mangrove',
+            'UBA': 'Basalt', 'UDO': 'Deep Ocean', 'UDU': 'Dune', 'UMO': 'Monument',
+            'USG': 'Shale Grey', 'USU': 'Surfmist', 'UWB': 'Wallaby', 'UWS': 'Windspray',
+            'UWG': 'Woodland Grey', 'UCO': 'Cove',
           };
           const code = skuSuffixMatch[1];
           if (SKU_COLOUR_CODES[code]) {
@@ -1206,33 +1209,39 @@ export const importService = {
     const categoryId = await this.findOrCreateCategory(row.category, row.subcategory);
 
     const slug = generateSlug(`${row.product_name}-${sku}`);
-    const productData: any = {
+
+    // Fields that always update on re-import (price, stock, status)
+    const productUpdateData: any = {
       name: row.product_name,
       slug,
-      sku,
       type: 'simple',
       status: row.status || 'active',
+    };
+
+    // Fields only set on first creation (description, tags — won't overwrite manual edits or images)
+    const productInsertData: any = {
+      sku,
       shortDescription: row.short_description || '',
       description: row.description || '',
       tags: row.tags ? row.tags.split(',').map((t: string) => t.trim()) : [],
     };
 
     if (categoryId) {
-      productData.category = categoryId;
-      productData.categories = [categoryId];
+      productUpdateData.category = categoryId;
+      productUpdateData.categories = [categoryId];
     }
 
-    if (row.base_price) productData.price = Math.round(parseFloat(String(row.base_price)) * 100) / 100;
-    if (row.stock !== undefined) productData.stock = parseInt(String(row.stock), 10);
-    if (row.minimum_order_qty) productData.minimumOrderQty = parseInt(String(row.minimum_order_qty), 10);
-    if (row.pricing_type) productData.pricingModel = row.pricing_type;
+    if (row.base_price) productUpdateData.price = Math.round(parseFloat(String(row.base_price)) * 100) / 100;
+    if (row.stock !== undefined) productUpdateData.stock = parseInt(String(row.stock), 10);
+    if (row.minimum_order_qty) productUpdateData.minimumOrderQty = parseInt(String(row.minimum_order_qty), 10);
+    if (row.pricing_type) productUpdateData.pricingModel = row.pricing_type;
 
     if (row.tier) {
-      productData.specifications = { Tier: String(row.tier) };
+      productUpdateData.specifications = { Tier: String(row.tier) };
     }
 
     if (row.seo_title || row.seo_description) {
-      productData.seo = { metaTitle: row.seo_title || '', metaDescription: row.seo_description || '' };
+      productInsertData.seo = { metaTitle: row.seo_title || '', metaDescription: row.seo_description || '' };
     }
 
     // Build specifications from dimension/attribute columns
@@ -1243,16 +1252,19 @@ export const importService = {
     }
 
     if (Object.keys(specs).length > 0) {
-      productData.specifications = { ...(productData.specifications || {}), ...specs };
+      productUpdateData.specifications = { ...(productUpdateData.specifications || {}), ...specs };
     }
 
     if ((row as any).compare_at_price) {
-      productData.compareAtPrice = parseFloat(String((row as any).compare_at_price));
+      productUpdateData.compareAtPrice = parseFloat(String((row as any).compare_at_price));
     }
 
     const product = await Product.findOneAndUpdate(
       { sku },
-      { $set: productData },
+      {
+        $set: productUpdateData,
+        $setOnInsert: productInsertData,
+      },
       { upsert: true, new: true, runValidators: false }
     );
     return product._id;
@@ -1353,20 +1365,26 @@ export const importService = {
       .map((r) => r.row.base_price ? parseFloat(String(r.row.base_price)) : null)
       .filter((p): p is number => p !== null && !isNaN(p));
 
-    const productData: any = {
+    // Fields that should ALWAYS update on re-import (prices, status)
+    const productUpdateData: any = {
       name: productName,
       slug,
       type: 'configurable',
       status: firstRow.status || 'active',
       pricingModel: 'per_piece',
+    };
+
+    // Fields that should ONLY be set on first creation (won't overwrite manual edits)
+    const productInsertData: any = {
+      sku: parentSku,
       shortDescription: firstRow.short_description || '',
       description: firstRow.description || `${productName} — available in multiple options`,
       tags: firstRow.tags ? firstRow.tags.split(',').map((t: string) => t.trim()) : [sheetName.toLowerCase()],
     };
 
     if (categoryId) {
-      productData.category = categoryId;
-      productData.categories = [categoryId];
+      productUpdateData.category = categoryId;
+      productUpdateData.categories = [categoryId];
     }
 
     // Clips/offsets: assign to their own category pages (NOT the parent downpipes page)
@@ -1382,17 +1400,17 @@ export const importService = {
         c.slug === (isClipProduct ? 'downpipe-clips' : 'downpipe-offsets')
       );
       if (primaryCat) {
-        productData.category = primaryCat._id;
-        productData.categories = accessoryCats.map((c: any) => c._id);
+        productUpdateData.category = primaryCat._id;
+        productUpdateData.categories = accessoryCats.map((c: any) => c._id);
       }
     }
 
-    // Set the lowest price as the base price for display
+    // Set the lowest price as the base price for display (always update)
     if (prices.length > 0) {
-      productData.price = Math.round(Math.min(...prices) * 100) / 100;
+      productUpdateData.price = Math.round(Math.min(...prices) * 100) / 100;
     }
 
-    // Specs that are common across the group (exclude fields that are configurable attributes)
+    // Specs that are common across the group (always update)
     const specs: Record<string, string> = {};
     if (firstRow.tier) specs['Tier'] = String(firstRow.tier);
     const varyingFieldNames = new Set(varyingDimensions);
@@ -1400,15 +1418,16 @@ export const importService = {
     if (firstRow.finish_category && !varyingFieldNames.has('finish_category')) specs['Finish Category'] = String(firstRow.finish_category);
     if (firstRow.sump_type && !varyingFieldNames.has('sump_type')) specs['Type'] = String(firstRow.sump_type);
     if (firstRow.colour && !varyingFieldNames.has('colour')) specs['Colour'] = String(firstRow.colour);
-    if (Object.keys(specs).length > 0) productData.specifications = specs;
+    if (Object.keys(specs).length > 0) productUpdateData.specifications = specs;
 
     // Upsert by slug (not SKU) so multiple material groups merge into one product.
-    // Use $setOnInsert for sku so only the first group sets it.
+    // $set: fields that always update (price, status, categories)
+    // $setOnInsert: fields that only set on first creation (description, tags, images preserved)
     const product = await Product.findOneAndUpdate(
       { slug },
       {
-        $set: productData,
-        $setOnInsert: { sku: parentSku },
+        $set: productUpdateData,
+        $setOnInsert: productInsertData,
       },
       { upsert: true, new: true, runValidators: false }
     );
@@ -1538,24 +1557,32 @@ export const importService = {
           .join('|');
         const attributeHash = crypto.createHash('md5').update(sorted).digest('hex');
 
-        const variantData: any = {
+        // Fields that always update on re-import (price, stock, attributes)
+        const variantUpdateData: any = {
           product: product._id,
-          sku: variantSku,
           attributes: variantAttributes,
           attributeHash,
           isActive: true,
         };
 
         if (row.base_price) {
-          variantData.priceOverride = Math.round(parseFloat(String(row.base_price)) * 100) / 100;
+          variantUpdateData.priceOverride = Math.round(parseFloat(String(row.base_price)) * 100) / 100;
         }
         if (row.stock !== undefined) {
-          variantData.stock = parseInt(String(row.stock), 10);
+          variantUpdateData.stock = parseInt(String(row.stock), 10);
         }
+
+        // Fields only set on first creation (sku as identifier, images preserved)
+        const variantInsertData: any = {
+          sku: variantSku,
+        };
 
         const variant = await ProductVariant.findOneAndUpdate(
           { sku: variantSku },
-          { $set: variantData },
+          {
+            $set: variantUpdateData,
+            $setOnInsert: variantInsertData,
+          },
           { upsert: true, new: true, runValidators: false }
         );
 

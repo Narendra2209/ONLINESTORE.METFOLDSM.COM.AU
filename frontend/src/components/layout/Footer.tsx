@@ -41,8 +41,8 @@ export default function Footer() {
     <footer className="bg-steel-900 text-steel-300">
       {/* Trust badges */}
       <div className="border-b border-steel-800">
-        <div className="container-main py-8">
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+        <div className="container-main py-5 sm:py-8">
+          <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-4">
             {trustBadges.map((badge) => (
               <div key={badge.label} className="flex items-start gap-3 group">
                 <div className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600/10 text-brand-400 group-hover:bg-brand-600/20 transition-colors">
@@ -59,10 +59,10 @@ export default function Footer() {
       </div>
 
       {/* Main footer */}
-      <div className="container-main py-12">
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-5">
+      <div className="container-main py-8 sm:py-12">
+        <div className="grid grid-cols-2 gap-6 sm:gap-10 md:grid-cols-2 lg:grid-cols-5">
           {/* Brand */}
-          <div className="lg:col-span-2">
+          <div className="col-span-2 lg:col-span-2">
             <div className="mb-4">
               <img
                 src="/images/logo.png"

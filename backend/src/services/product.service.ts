@@ -59,12 +59,13 @@ export const productService = {
     if (query.availableTo) filter.availableTo = { $in: [query.availableTo, 'all'] };
     if (query.tags) filter.tags = { $in: query.tags.split(',') };
 
-    // Sort
-    let sort: any = { createdAt: -1 };
+    // Sort — default to best sellers (highest salesCount first)
+    let sort: any = { salesCount: -1, createdAt: -1 };
     if (query.sortBy === 'name') sort = { name: 1 };
     else if (query.sortBy === 'price_asc') sort = { price: 1 };
     else if (query.sortBy === 'price_desc') sort = { price: -1 };
     else if (query.sortBy === 'newest') sort = { createdAt: -1 };
+    else if (query.sortBy === 'best_sellers') sort = { salesCount: -1, createdAt: -1 };
 
     const [products, total] = await Promise.all([
       Product.find(filter)

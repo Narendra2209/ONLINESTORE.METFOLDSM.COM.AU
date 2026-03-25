@@ -23,7 +23,7 @@ export default function CategoryPage() {
       try {
         const [catData, prodResponse] = await Promise.all([
           productApi.getCategoryBySlug(slug),
-          productApi.getProducts({ category: slug, limit: 24 }),
+          productApi.getProducts({ category: slug, limit: 24, sortBy: 'best_sellers' }),
         ]);
         setCategory(catData);
         setProducts(prodResponse.data);
@@ -45,8 +45,8 @@ export default function CategoryPage() {
             <Skeleton className="h-9 w-64" />
           </div>
         </div>
-        <div className="container-main py-8">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="container-main py-5 sm:py-8">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="rounded-xl border border-steel-100 bg-white overflow-hidden">
                 <Skeleton className="aspect-[4/3] w-full rounded-none" />
@@ -80,20 +80,20 @@ export default function CategoryPage() {
     <div className="bg-steel-50 min-h-screen animate-fade-in-up">
       {/* Category Header */}
       <div className="bg-white border-b border-steel-100">
-        <div className="container-main py-8">
+        <div className="container-main py-5 sm:py-8">
           <Breadcrumb items={[{ label: category.name }]} />
-          <h1 className="mt-3 text-3xl font-bold text-steel-900 tracking-tight">{category.name}</h1>
+          <h1 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-bold text-steel-900 tracking-tight">{category.name}</h1>
           {category.description && (
-            <p className="mt-2 text-steel-500 max-w-2xl leading-relaxed">{category.description}</p>
+            <p className="mt-1.5 sm:mt-2 text-sm sm:text-base text-steel-500 max-w-2xl leading-relaxed">{category.description}</p>
           )}
         </div>
       </div>
 
-      <div className="container-main py-8">
+      <div className="container-main py-5 sm:py-8">
         {/* Subcategories */}
         {category.children && category.children.length > 0 && (
-          <div className="mb-10">
-            <h2 className="text-lg font-semibold text-steel-900 mb-4">Browse Subcategories</h2>
+          <div className="mb-6 sm:mb-10">
+            <h2 className="text-base sm:text-lg font-semibold text-steel-900 mb-3 sm:mb-4">Browse Subcategories</h2>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {category.children.map((sub) => (
                 <Link
@@ -121,12 +121,12 @@ export default function CategoryPage() {
         {/* Products */}
         {products.length > 0 ? (
           <>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-steel-900">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 className="text-base sm:text-lg font-semibold text-steel-900">
                 Products <span className="text-steel-400 font-normal">({products.length})</span>
               </h2>
             </div>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
               {products.map((product) => (
                 <ProductCard key={product._id} product={product} />
               ))}

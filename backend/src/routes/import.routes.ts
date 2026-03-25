@@ -46,6 +46,13 @@ router.get(
 );
 
 router.get(
+  '/:id/download',
+  authenticate,
+  authorizePermission('imports', 'read'),
+  importController.downloadImportData
+);
+
+router.get(
   '/:id',
   authenticate,
   authorizePermission('imports', 'read'),

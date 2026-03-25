@@ -137,8 +137,8 @@ export default function HomePage() {
           <div className="absolute top-1/2 right-[5%] h-[300px] w-[300px] rounded-full bg-accent-500/5 blur-[80px] animate-float" />
         </div>
 
-        <motion.div style={{ opacity: heroOpacity }} className="container-main relative z-10 py-20 lg:py-28">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <motion.div style={{ opacity: heroOpacity }} className="container-main relative z-10 py-12 sm:py-16 lg:py-28">
+          <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 items-center">
             {/* Text content */}
             <motion.div
               initial={{ opacity: 0, x: -40 }}
@@ -155,7 +155,7 @@ export default function HomePage() {
                 Now accepting online orders
               </motion.div>
 
-              <h1 className="text-4xl font-bold tracking-tight text-white lg:text-5xl xl:text-6xl">
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white lg:text-5xl xl:text-6xl">
                 <motion.span
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -183,7 +183,7 @@ export default function HomePage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5, duration: 0.6 }}
-                className="mt-6 text-lg text-steel-300 leading-relaxed max-w-xl"
+                className="mt-4 sm:mt-6 text-base sm:text-lg text-steel-300 leading-relaxed max-w-xl"
               >
                 Premium Colorbond roofing, cladding, rainwater goods and accessories.
                 Configure your products online with{' '}

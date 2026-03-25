@@ -72,7 +72,7 @@ export default function ProductDetailPage() {
 
   return (
     <div className="bg-white animate-fade-in-up">
-      <div className="container-main py-6">
+      <div className="container-main py-4 sm:py-6">
         {/* Breadcrumb */}
         <Breadcrumb
           items={[
@@ -84,7 +84,7 @@ export default function ProductDetailPage() {
         />
 
         {/* Product Layout */}
-        <div className="mt-6 grid grid-cols-1 gap-10 lg:grid-cols-2">
+        <div className="mt-4 sm:mt-6 grid grid-cols-1 gap-6 sm:gap-8 lg:gap-10 lg:grid-cols-2">
           {/* Left: Image Gallery */}
           <div className="space-y-4">
             {/* Main image */}
@@ -141,7 +141,7 @@ export default function ProductDetailPage() {
               {product.isFeatured && <Badge variant="warning">Featured</Badge>}
             </div>
 
-            <h1 className="text-2xl font-bold text-steel-900 lg:text-3xl tracking-tight leading-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-steel-900 lg:text-3xl tracking-tight leading-tight">
               {product.name}
             </h1>
 
@@ -156,7 +156,7 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Trust signals */}
-            <div className="mt-8 grid grid-cols-3 gap-4 border-t border-steel-100 pt-6">
+            <div className="mt-6 sm:mt-8 grid grid-cols-3 gap-2 sm:gap-4 border-t border-steel-100 pt-4 sm:pt-6">
               {[
                 { icon: Truck, label: 'Fast Delivery', color: 'text-brand-500' },
                 { icon: Shield, label: 'Quality Guaranteed', color: 'text-green-500' },
@@ -174,14 +174,14 @@ export default function ProductDetailPage() {
         </div>
 
         {/* Tabs: Description, Specifications */}
-        <div className="mt-14 border-t border-steel-100">
+        <div className="mt-8 sm:mt-14 border-t border-steel-100">
           <div className="flex gap-0">
             {['description', 'specifications'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={cn(
-                  'relative px-6 py-4 text-sm font-medium transition-colors',
+                  'relative px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-colors',
                   activeTab === tab
                     ? 'text-brand-600'
                     : 'text-steel-500 hover:text-steel-700'

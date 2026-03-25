@@ -71,6 +71,12 @@ export const orderService = {
       couponCode: input.couponCode || '',
     });
 
+    // Increment salesCount for each product ordered
+    const salesUpdates = orderItems.map((item) =>
+      Product.findByIdAndUpdate(item.product, { $inc: { salesCount: item.quantity } })
+    );
+    await Promise.all(salesUpdates);
+
     // Clear cart
     cart.items = [] as any;
     await cart.save();

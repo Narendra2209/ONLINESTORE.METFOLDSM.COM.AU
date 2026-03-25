@@ -28,8 +28,10 @@ const MATERIAL_COLOURS: Record<string, { name: string; hex: string }[]> = {
   'Colorbond': [
     { name: 'Basalt', hex: '#646560' },
     { name: 'Classic Cream', hex: '#E8D8A8' },
+    { name: 'Cottage Green', hex: '#3A5243' },
     { name: 'Cove', hex: '#3D5C5E' },
     { name: 'Deep Ocean', hex: '#1B3A4B' },
+    { name: 'Dover White', hex: '#E8E4D8' },
     { name: 'Dune', hex: '#B5A78C' },
     { name: 'Evening Haze', hex: '#C5BAA8' },
     { name: 'Gully', hex: '#5B6B52' },
@@ -39,7 +41,7 @@ const MATERIAL_COLOURS: Record<string, { name: string; hex: string }[]> = {
     { name: 'Manor Red', hex: '#7B2D26' },
     { name: 'Monument', hex: '#35393B' },
     { name: 'Night Sky', hex: '#1E2326' },
-    { name: 'Pale Eucalyptus', hex: '#8DA07E' },
+    { name: 'Pale Eucalypt', hex: '#8DA07E' },
     { name: 'Paperbark', hex: '#C5B9A0' },
     { name: 'Shale Grey', hex: '#A8A49C' },
     { name: 'Southerly', hex: '#969E98' },
@@ -50,27 +52,34 @@ const MATERIAL_COLOURS: Record<string, { name: string; hex: string }[]> = {
     { name: 'Woodland Grey', hex: '#4B4D46' },
   ],
   'Matt Colorbond': [
-    { name: 'Matt Basalt', hex: '#5E5F5B' },
-    { name: 'Matt Dune', hex: '#ADA080' },
-    { name: 'Matt Monument', hex: '#2F3335' },
-    { name: 'Matt Shale Grey', hex: '#9E9A92' },
-    { name: 'Matt Surfmist', hex: '#D5D1C6' },
-    { name: 'Matt Wallaby', hex: '#797369' },
+    { name: 'Basalt', hex: '#5E5F5B' },
+    { name: 'Bluegum', hex: '#4A6670' },
+    { name: 'Dune', hex: '#ADA080' },
+    { name: 'Monument', hex: '#2F3335' },
+    { name: 'Shale Grey', hex: '#9E9A92' },
+    { name: 'Surfmist', hex: '#D5D1C6' },
+    { name: 'Wallaby', hex: '#797369' },
   ],
   'Ultra': [
-    { name: 'Ultra Basalt', hex: '#585955' },
-    { name: 'Ultra Cove', hex: '#345052' },
-    { name: 'Ultra Deep Ocean', hex: '#152F3F' },
-    { name: 'Ultra Dune', hex: '#A99A80' },
-    { name: 'Ultra Monument', hex: '#2A2E30' },
-    { name: 'Ultra Shale Grey', hex: '#959189' },
-    { name: 'Ultra Surfmist', hex: '#CCC8BD' },
+    // { name: 'Basalt', hex: '#585955' },
+    // { name: 'Cove', hex: '#345052' },
+    { name: 'Deep Ocean', hex: '#152F3F' },
+    { name: 'Dune', hex: '#A99A80' },
+    { name: 'Monument', hex: '#2A2E30' },
+    { name: 'Shale Grey', hex: '#959189' },
+    { name: 'Surfmist', hex: '#CCC8BD' },
+    { name: 'Wallaby', hex: '#797369' },
+    { name: 'Windspray', hex: '#7E8580' },
+    { name: 'Woodland Grey', hex: '#4B4D46' },
+  ],
+  'Zincalume': [
+    { name: 'Zincalume', hex: '#B0B5B3' },
   ],
   'Galvanised': [
-    { name: 'Natural Galvanised', hex: '#B0B5B3' },
+    { name: 'Galvanised', hex: '#B0B5B3' },
   ],
   'Zinc': [
-    { name: 'Natural Zinc', hex: '#C4C8CB' },
+    { name: 'Zinc', hex: '#C4C8CB' },
   ],
 };
 
@@ -344,21 +353,21 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
             Add to Cart
           </Button>
           <Button variant="outline" size="lg" leftIcon={<Zap className="h-5 w-5" />} onClick={() => {
-              if (requireLogin()) return;
-              addItem({
-                _id: '',
-                product: {
-                  _id: product._id, name: product.name, slug: product.slug, sku: product.sku,
-                  images: product.images.map((i) => ({ url: i.url, alt: i.alt })),
-                },
-                selectedAttributes: [],
-                pricingModel: 'fixed',
-                unitPrice: product.price!,
-                quantity,
-                lineTotal: product.price! * quantity,
-              });
-              router.push('/cart');
-            }} disabled={!product.price}>
+            if (requireLogin()) return;
+            addItem({
+              _id: '',
+              product: {
+                _id: product._id, name: product.name, slug: product.slug, sku: product.sku,
+                images: product.images.map((i) => ({ url: i.url, alt: i.alt })),
+              },
+              selectedAttributes: [],
+              pricingModel: 'fixed',
+              unitPrice: product.price!,
+              quantity,
+              lineTotal: product.price! * quantity,
+            });
+            router.push('/cart');
+          }} disabled={!product.price}>
             Buy Now
           </Button>
         </div>
@@ -387,7 +396,33 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
     // Get selected material for colour filtering
     const selectedMaterial = selectedAttributes['Material'] || '';
     const hasMaterialVariation = variantAttributeOptions['Material'] && variantAttributeOptions['Material'].values.size > 1;
-    const materialColours = selectedMaterial ? (MATERIAL_COLOURS[selectedMaterial] || []) : [];
+
+    // Filter material colours to ONLY those that exist in actual variant data
+    const materialColours = useMemo(() => {
+      if (!selectedMaterial) return [];
+      const displayColours = MATERIAL_COLOURS[selectedMaterial] || [];
+      // Get actual colour values from variants that have this material
+      const actualColours = new Set<string>();
+      for (const v of product.variants || []) {
+        const hasMat = v.attributes.some((a) => a.attributeName === 'Material' && a.value === selectedMaterial);
+        if (hasMat) {
+          const col = v.attributes.find((a) => a.attributeName === 'Colour');
+          if (col) actualColours.add(col.value);
+        }
+      }
+      // Only show colours from the display list that actually exist in variants
+      // If no exact match in MATERIAL_COLOURS, also include any actual colours not in the display list
+      const filtered = displayColours.filter((c) => actualColours.has(c.name));
+      // Add any actual variant colours missing from MATERIAL_COLOURS (with default hex)
+      for (const colName of Array.from(actualColours)) {
+        if (!filtered.some((c) => c.name === colName)) {
+          const allKnown = Object.values(MATERIAL_COLOURS).flat();
+          const known = allKnown.find((c) => c.name.toLowerCase() === colName.toLowerCase());
+          filtered.push({ name: colName, hex: known?.hex || '#808080' });
+        }
+      }
+      return filtered;
+    }, [selectedMaterial, product.variants]);
 
     // For products without Material variation (screws, rivets), build colour list from variants
     const standaloneColours = useMemo(() => {
@@ -417,7 +452,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
         }
       }
       if (changed) setSelectedAttributes(newAttrs);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isVariantBased]);
 
     // When material changes, auto-set the Colour variant attribute and reset dimensions

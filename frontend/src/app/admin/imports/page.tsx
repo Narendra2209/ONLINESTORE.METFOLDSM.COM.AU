@@ -6,7 +6,7 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import Pagination from '@/components/ui/Pagination';
 import toast from 'react-hot-toast';
-import { Upload, FileSpreadsheet, CheckCircle, XCircle, Clock, AlertTriangle, Loader2, Eye, ArrowRight, X, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
+import { Upload, FileSpreadsheet, CheckCircle, XCircle, Clock, AlertTriangle, Loader2, Eye, ArrowRight, X, ChevronDown, ChevronRight, Trash2, Download } from 'lucide-react';
 
 interface ImportJob {
   _id: string;
@@ -548,13 +548,37 @@ export default function AdminImportsPage() {
                         {new Date(job.createdAt).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={(e) => handleDeleteJob(job._id, e)}
-                          className="rounded-lg p-1.5 text-steel-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                          title="Delete import record"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                const response = await api.get(`/admin/imports/${job._id}/download`, { responseType: 'blob' });
+                                const url = window.URL.createObjectURL(new Blob([response.data]));
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.setAttribute('download', `${job.fileName.replace(/\.[^.]+$/, '')}_export.xlsx`);
+                                document.body.appendChild(link);
+                                link.click();
+                                link.remove();
+                                window.URL.revokeObjectURL(url);
+                              } catch {
+                                toast.error('Failed to download');
+                              }
+                            }}
+                            className="rounded-lg p-1.5 text-steel-400 hover:bg-brand-50 hover:text-brand-600 transition-colors"
+                            title="Download imported data"
+                          >
+                            <Download className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteJob(job._id, e)}
+                            className="rounded-lg p-1.5 text-steel-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                            title="Delete import record"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                     {expandedJob === job._id && job.errors.length > 0 && (

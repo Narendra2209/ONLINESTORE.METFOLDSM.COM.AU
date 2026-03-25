@@ -66,6 +66,9 @@ export interface IProduct extends Document {
   // Relationships
   relatedProducts: mongoose.Types.ObjectId[];
 
+  // Sales tracking
+  salesCount: number;
+
   // Audit
   createdBy: mongoose.Types.ObjectId;
   updatedBy: mongoose.Types.ObjectId;
@@ -154,6 +157,8 @@ const productSchema = new Schema<IProduct>(
 
     relatedProducts: [{ type: Schema.Types.ObjectId, ref: 'Product' }],
 
+    salesCount: { type: Number, default: 0 },
+
     createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
     updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
 
@@ -174,5 +179,6 @@ productSchema.index({ categories: 1 });
 productSchema.index({ status: 1, isVisible: 1, isFeatured: 1 });
 productSchema.index({ tags: 1 });
 productSchema.index({ name: 'text', shortDescription: 'text', tags: 'text' });
+productSchema.index({ salesCount: -1 });
 
 export default mongoose.model<IProduct>('Product', productSchema);

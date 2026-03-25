@@ -103,73 +103,73 @@ export default function Header() {
     )}>
       {/* Top bar */}
       <div className="bg-gradient-to-r from-steel-900 via-steel-900 to-steel-800 text-white">
-        <div className="container-main flex items-center justify-between py-2.5 text-sm">
-          <div className="flex items-center gap-2">
-            <Phone className="h-3.5 w-3.5 text-brand-400" />
+        <div className="container-main flex items-center justify-between py-1.5 sm:py-2.5 text-xs sm:text-sm">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Phone className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-brand-400" />
             <span className="font-semibold">1300 XXX XXX</span>
-            <span className="hidden sm:inline text-steel-400 mx-2">|</span>
-            <span className="hidden sm:inline text-steel-300">Australian Industrial Roofing & Sheet Metal Supplies</span>
+            <span className="hidden md:inline text-steel-400 mx-2">|</span>
+            <span className="hidden md:inline text-steel-300">Australian Industrial Roofing & Sheet Metal Supplies</span>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/contact" className="text-steel-300 hover:text-white transition-colors">Contact Us</Link>
+            <Link href="/contact" className="text-steel-300 hover:text-white transition-colors text-xs sm:text-sm">Contact Us</Link>
           </div>
         </div>
       </div>
 
       {/* Main header */}
       <div className="bg-white border-b border-steel-100">
-        <div className="container-main flex items-center justify-between py-4">
-          {/* Logo — top-left, larger */}
+        <div className="container-main flex items-center justify-between py-3 sm:py-4">
+          {/* Logo — left corner */}
           <Link href="/" className="flex-shrink-0 group">
             <Image
               src="/images/logo.png"
               alt="Metfold Sheet Metal"
               width={300}
               height={75}
-              className="h-16 w-auto object-contain transition-transform duration-200 group-hover:scale-[1.02]"
+              className="h-10 sm:h-12 md:h-14 lg:h-16 w-auto object-contain transition-transform duration-200 group-hover:scale-[1.02]"
               priority
             />
           </Link>
 
-          {/* Search bar */}
-          <form onSubmit={handleSearch} className="hidden flex-1 max-w-xl mx-8 lg:block">
+          {/* Search bar — hidden on mobile, shown on tablet+ */}
+          <form onSubmit={handleSearch} className="hidden md:block flex-1 max-w-md lg:max-w-xl mx-4 lg:mx-8">
             <div className="relative group">
               <input
                 type="text"
                 placeholder="Search products, categories..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-xl border border-steel-200 bg-steel-50/50 py-2.5 pl-11 pr-4 text-sm
+                className="w-full rounded-xl border border-steel-200 bg-steel-50/50 py-2 lg:py-2.5 pl-10 lg:pl-11 pr-4 text-sm
                   focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20
                   group-hover:border-steel-300 transition-all duration-200"
               />
-              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-steel-400 group-focus-within:text-brand-500 transition-colors" />
+              <Search className="absolute left-3 lg:left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-steel-400 group-focus-within:text-brand-500 transition-colors" />
             </div>
           </form>
 
-          {/* Right actions */}
-          <div className="flex items-center gap-1">
+          {/* Right actions — cart + sign up */}
+          <div className="flex items-center gap-0.5 sm:gap-1">
             {/* Mobile search toggle */}
             <button
-              className="lg:hidden rounded-xl p-2.5 text-steel-500 hover:bg-steel-50 hover:text-steel-700 transition-colors"
+              className="md:hidden rounded-xl p-2 sm:p-2.5 text-steel-500 hover:bg-steel-50 hover:text-steel-700 transition-colors"
               onClick={() => setSearchOpen(!searchOpen)}
             >
               <Search className="h-5 w-5" />
             </button>
 
-            {/* User menu */}
+            {/* User menu / Sign Up — right corner */}
             {isAuthenticated ? (
               <div
-                className="relative hidden sm:block"
+                className="relative"
                 onMouseEnter={() => setShowUserMenu(true)}
                 onMouseLeave={() => setShowUserMenu(false)}
               >
-                <button className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-steel-600 hover:bg-steel-50 transition-colors">
+                <button className="flex items-center gap-1.5 sm:gap-2 rounded-xl px-2 sm:px-3 py-2 sm:py-2.5 text-sm text-steel-600 hover:bg-steel-50 transition-colors">
                   <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-brand-600">
                     <User className="h-4 w-4" />
                   </div>
-                  <span className="hidden md:inline font-medium">{user?.firstName}</span>
-                  <ChevronDown className={cn('h-3 w-3 transition-transform duration-200', showUserMenu && 'rotate-180')} />
+                  <span className="hidden sm:inline font-medium text-xs md:text-sm">{user?.firstName}</span>
+                  <ChevronDown className={cn('hidden sm:block h-3 w-3 transition-transform duration-200', showUserMenu && 'rotate-180')} />
                 </button>
                 {showUserMenu && (
                   <div className="absolute right-0 top-full z-50 min-w-[200px] rounded-xl bg-white py-2 shadow-xl border border-steel-100 animate-fade-in-up">
@@ -205,21 +205,21 @@ export default function Header() {
             ) : (
               <Link
                 href="/login"
-                className="hidden sm:flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-steel-600 hover:bg-steel-50 transition-colors"
+                className="flex items-center gap-1.5 sm:gap-2 rounded-xl px-2 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm font-medium text-steel-600 hover:bg-steel-50 transition-colors"
               >
-                <User className="h-5 w-5" />
-                <span className="hidden md:inline">Sign In</span>
+                <User className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="hidden xs:inline sm:inline">Sign In</span>
               </Link>
             )}
 
-            {/* Cart */}
+            {/* Cart — right corner */}
             <button
               onClick={() => router.push('/cart')}
-              className="relative rounded-xl p-2.5 text-steel-500 hover:bg-steel-50 hover:text-steel-700 transition-colors"
+              className="relative rounded-xl p-2 sm:p-2.5 text-steel-500 hover:bg-steel-50 hover:text-steel-700 transition-colors"
             >
               <ShoppingCart className="h-5 w-5" />
               {cartItemCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent-500 text-[10px] font-bold text-white ring-2 ring-white">
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-accent-500 text-[9px] sm:text-[10px] font-bold text-white ring-2 ring-white">
                   {cartItemCount}
                 </span>
               )}
@@ -227,7 +227,7 @@ export default function Header() {
 
             {/* Mobile menu toggle */}
             <button
-              className="lg:hidden rounded-xl p-2.5 text-steel-500 hover:bg-steel-50 hover:text-steel-700 transition-colors"
+              className="lg:hidden rounded-xl p-2 sm:p-2.5 text-steel-500 hover:bg-steel-50 hover:text-steel-700 transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -237,7 +237,7 @@ export default function Header() {
 
         {/* Mobile search bar */}
         {searchOpen && (
-          <div className="lg:hidden border-t border-steel-100 animate-fade-in-up">
+          <div className="md:hidden border-t border-steel-100 animate-fade-in-up">
             <form onSubmit={handleSearch} className="container-main py-3">
               <div className="relative">
                 <input

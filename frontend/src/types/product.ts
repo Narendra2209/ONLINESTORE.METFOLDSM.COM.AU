@@ -138,7 +138,7 @@ export interface ProductFilters {
   colour?: string;
   thickness?: string;
   availability?: 'in_stock' | 'out_of_stock';
-  sortBy?: 'name' | 'price_asc' | 'price_desc' | 'newest';
+  sortBy?: 'best_sellers' | 'name' | 'price_asc' | 'price_desc' | 'newest';
   page?: number;
   limit?: number;
 }

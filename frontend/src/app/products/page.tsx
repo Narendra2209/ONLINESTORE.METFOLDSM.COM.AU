@@ -22,7 +22,7 @@ export default function ProductListingPage() {
           </div>
         </div>
         <div className="container-main py-8">
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="rounded-xl border border-steel-100 bg-white overflow-hidden">
                 <Skeleton className="aspect-[4/3] w-full rounded-none" />
@@ -51,7 +51,7 @@ function ProductListingContent() {
   const [filters, setFilters] = useState<ProductFilters>({
     search: searchParams.get('search') || '',
     category: searchParams.get('category') || '',
-    sortBy: 'newest',
+    sortBy: 'best_sellers',
     page: 1,
     limit: 12,
   });
@@ -79,10 +79,10 @@ function ProductListingContent() {
     <div className="bg-steel-50 min-h-screen animate-fade-in-up">
       {/* Page Header */}
       <div className="bg-white border-b border-steel-100">
-        <div className="container-main py-8">
+        <div className="container-main py-5 sm:py-8">
           <Breadcrumb items={[{ label: 'All Products' }]} />
-          <h1 className="mt-3 text-3xl font-bold text-steel-900 tracking-tight">All Products</h1>
-          <p className="mt-1 text-steel-500">{total} products available</p>
+          <h1 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-bold text-steel-900 tracking-tight">All Products</h1>
+          <p className="mt-1 text-sm sm:text-base text-steel-500">{total} products available</p>
         </div>
       </div>
 
@@ -107,12 +107,13 @@ function ProductListingContent() {
             <span className="text-sm text-steel-500 hidden sm:inline">Sort by:</span>
             <Select
               options={[
+                { value: 'best_sellers', label: 'Best Sellers' },
                 { value: 'newest', label: 'Newest First' },
                 { value: 'name', label: 'Name A-Z' },
                 { value: 'price_asc', label: 'Price: Low to High' },
                 { value: 'price_desc', label: 'Price: High to Low' },
               ]}
-              value={filters.sortBy || 'newest'}
+              value={filters.sortBy || 'best_sellers'}
               onChange={(e) => setFilters({ ...filters, sortBy: e.target.value as any, page: 1 })}
               className="w-48"
             />
@@ -121,7 +122,7 @@ function ProductListingContent() {
 
         {/* Products grid */}
         {loading ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="rounded-xl border border-steel-100 bg-white overflow-hidden">
                 <Skeleton className="aspect-[4/3] w-full rounded-none" />
@@ -141,7 +142,7 @@ function ProductListingContent() {
             <p className="mt-1 text-sm text-steel-500">Try adjusting your search or filters</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
             {products.map((product) => (
               <ProductCard key={product._id} product={product} />
             ))}
