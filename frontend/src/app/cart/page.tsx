@@ -226,12 +226,17 @@ export default function CartPage() {
         doc.setFillColor(180, 180, 180);
         doc.rect(xStart + 1.5, rowY + 1.5, 4, 4, 'F');
 
-        // Girth text
+        // Product name + Girth (if flashing)
         const girthVal = getAttr(item, 'Total Girth').replace('mm', '');
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(0, 0, 0);
-        doc.text(`Girth: ${girthVal}`, xStart + 8, rowY + 5.5);
+        const isFlashing = item.product.slug === 'custom-flashing';
+        const displayName = isFlashing ? 'Flashing' : item.product.name;
+        const headerText = girthVal
+          ? `${displayName}  |  Girth: ${girthVal}`
+          : displayName;
+        doc.text(headerText, xStart + 8, rowY + 5.5);
 
         // ── DIAGRAM IMAGE ──
         const imgAreaY = rowY + 8;

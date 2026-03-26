@@ -24,14 +24,15 @@ type FoldType = 'Nothing' | 'Hook Fold' | 'Squash Fold' | 'Semi Squash Fold';
 
 const FOLD_OPTIONS: FoldType[] = ['Nothing', 'Hook Fold', 'Squash Fold', 'Semi Squash Fold'];
 
-// Material → base price per linear metre (AUD)
-const MATERIAL_PRICING: Record<string, number> = {
-  'Colorbond': 18.00,
-  'Matt Colorbond': 22.00,
-  'Ultra Colorbond': 24.00,
-  'Galvanised': 14.00,
-  'Zinc': 16.00,
-};
+// Available girths (rounded up to nearest)
+const AVAILABLE_GIRTHS = [100, 150, 200, 240, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 900, 1000, 1100, 1200];
+
+function roundUpGirth(girth: number): number {
+  for (const g of AVAILABLE_GIRTHS) {
+    if (girth <= g) return g;
+  }
+  return AVAILABLE_GIRTHS[AVAILABLE_GIRTHS.length - 1]; // max 1200
+}
 
 const COLOUR_OPTIONS: Record<string, string[]> = {
   'Colorbond': [
@@ -47,16 +48,23 @@ const COLOUR_OPTIONS: Record<string, string[]> = {
   'Zinc': ['Zinc'],
 };
 
-const GAUGE_OPTIONS = ['0.35mm', '0.42mm', '0.48mm', '0.55mm'];
+const GAUGE_BY_MATERIAL: Record<string, string[]> = {
+  'Colorbond': ['0.55mm'],
+  'Matt Colorbond': ['0.55mm'],
+  'Ultra Colorbond': ['0.55mm'],
+  'Galvanised': ['0.55mm', '0.75mm', '0.95mm'],
+  'Zinc': ['0.55mm', '0.75mm', '0.95mm'],
+};
 
 const GAUGE_MULTIPLIERS: Record<string, number> = {
   '0.35mm': 0.85,
   '0.42mm': 1.0,
   '0.48mm': 1.15,
   '0.55mm': 1.30,
+  '0.75mm': 1.60,
+  '0.95mm': 2.00,
 };
 
-const FOLD_COST = 1.50;
 const FOLD_TYPE_COST: Record<FoldType, number> = {
   'Nothing': 0,
   'Hook Fold': 2.00,
@@ -110,10 +118,38 @@ export default function FlashingConfigurator() {
   const [material, setMaterial] = useState('Colorbond');
   const [colour, setColour] = useState('');
   const [colourSide, setColourSide] = useState<'Inside' | 'Outside'>('Outside'); // Which side has the colour
-  const [gauge, setGauge] = useState('0.42mm');
+  const [gauge, setGauge] = useState('0.55mm');
   const [quantity, setQuantity] = useState(1);
   const [flashingLength, setFlashingLength] = useState(0); // length in metres (max 8m)
   const [tagName, setTagName] = useState('');
+
+  // Load saved flashing config from localStorage (for Edit Flashing)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('flashingConfig');
+      if (saved) {
+        const cfg = JSON.parse(saved);
+        if (cfg.points?.length > 0) setPoints(cfg.points);
+        if (cfg.segments?.length > 0) setSegments(cfg.segments);
+        if (cfg.foldAngles) setFoldAngles(cfg.foldAngles);
+        if (cfg.material) setMaterial(cfg.material);
+        if (cfg.colour) setColour(cfg.colour);
+        if (cfg.colourSide) setColourSide(cfg.colourSide);
+        if (cfg.gauge) setGauge(cfg.gauge);
+        if (cfg.quantity) setQuantity(cfg.quantity);
+        if (cfg.flashingLength) setFlashingLength(cfg.flashingLength);
+        if (cfg.tagName) setTagName(cfg.tagName);
+        if (cfg.startFold) setStartFold(cfg.startFold);
+        if (cfg.startFoldMm) setStartFoldMm(cfg.startFoldMm);
+        if (cfg.startFoldAngle) setStartFoldAngle(cfg.startFoldAngle);
+        if (cfg.startFoldDir) setStartFoldDir(cfg.startFoldDir);
+        if (cfg.endFold) setEndFold(cfg.endFold);
+        if (cfg.endFoldMm) setEndFoldMm(cfg.endFoldMm);
+        if (cfg.endFoldAngle) setEndFoldAngle(cfg.endFoldAngle);
+        if (cfg.endFoldDir) setEndFoldDir(cfg.endFoldDir);
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   // Keep segments array in sync with points count
   useEffect(() => {
@@ -138,24 +174,48 @@ export default function FlashingConfigurator() {
     }
   }, [points.length, foldAngles]);
 
-  // Reset colour when material changes
+  // Reset colour and gauge when material changes
   useEffect(() => {
     setColour('');
+    setGauge('0.55mm');
   }, [material]);
 
   // ── CALCULATIONS ──
 
   const totalGirth = segments.reduce((sum, s) => sum + s.lengthMm, 0);
-  const foldCount = Math.max(0, points.length - 2);
-  const totalGirthMetres = totalGirth / 1000;
+  // Fold count: interior folds + start/end fold type adds
+  // Hook = +1 fold, Squash/Semi Squash = +2 folds
+  const startFoldExtra = startFold === 'Hook Fold' ? 1 : (startFold === 'Squash Fold' || startFold === 'Semi Squash Fold') ? 2 : 0;
+  const endFoldExtra = endFold === 'Hook Fold' ? 1 : (endFold === 'Squash Fold' || endFold === 'Semi Squash Fold') ? 2 : 0;
+  const foldCount = Math.max(0, points.length - 2) + startFoldExtra + endFoldExtra;
+  const roundedGirth = roundUpGirth(totalGirth);
 
-  const baseRatePerMetre = MATERIAL_PRICING[material] || 18;
-  const gaugeMultiplier = GAUGE_MULTIPLIERS[gauge] || 1.0;
-  const foldCost = foldCount * FOLD_COST;
-  const startFoldCost = FOLD_TYPE_COST[startFold] || 0;
-  const endFoldCost = FOLD_TYPE_COST[endFold] || 0;
-  const unitPrice = (baseRatePerMetre * gaugeMultiplier * totalGirthMetres) + foldCost + startFoldCost + endFoldCost;
-  const lineTotal = unitPrice * quantity;
+  // Price lookup state — fetched from backend based on girth + folds + material + thickness
+  const [lookupPrice, setLookupPrice] = useState<number | null>(null);
+  const [lookupSku, setLookupSku] = useState('');
+  const [priceLoading, setPriceLoading] = useState(false);
+
+  // Fetch price from backend when girth/folds/material/gauge changes
+  useEffect(() => {
+    if (totalGirth <= 0 || !material) { setLookupPrice(null); setLookupSku(''); return; }
+    const thickness = parseFloat(gauge) || 0.55;
+
+    setPriceLoading(true);
+    import('@/lib/axios').then(({ default: api }) => {
+      api.get(`/products/flashing-price`, {
+        params: { girth: roundedGirth, folds: foldCount, material: material.toUpperCase(), thickness }
+      })
+        .then((res: any) => {
+          setLookupPrice(res.data?.data?.price ?? null);
+          setLookupSku(res.data?.data?.sku || `FC${roundedGirth}G${foldCount}F`);
+        })
+        .catch(() => { setLookupPrice(null); setLookupSku(''); })
+        .finally(() => setPriceLoading(false));
+    });
+  }, [roundedGirth, foldCount, material, gauge, totalGirth]);
+
+  const unitPrice = lookupPrice ?? 0;
+  const lineTotal = unitPrice * flashingLength * quantity;
 
   // ── DRAWING HANDLERS ──
 
@@ -261,6 +321,14 @@ export default function FlashingConfigurator() {
       toast.error('Please select a gauge');
       return;
     }
+    if (!flashingLength || flashingLength <= 0) {
+      toast.error('Please enter the length (in metres)');
+      return;
+    }
+    if (!quantity || quantity <= 0) {
+      toast.error('Please enter the quantity');
+      return;
+    }
 
     const label = tagName.trim() || `Custom Flashing`;
     const attrs = [
@@ -279,13 +347,22 @@ export default function FlashingConfigurator() {
         value: `${angle}°`,
       })),
       ...segments.map((s, i) => ({
-        attributeName: `Segment ${i + 1}`,
+        attributeName: `Segment ${String.fromCharCode(65 + i)}`,
         value: `${s.lengthMm}mm`,
       })),
     ];
 
     // Capture the diagram as an image for the cart
     const diagramImage = captureDiagramImage();
+
+    // Save flashing config to localStorage so Edit can restore it
+    try {
+      localStorage.setItem('flashingConfig', JSON.stringify({
+        points, segments, foldAngles, material, colour, colourSide, gauge, quantity,
+        flashingLength, tagName, startFold, startFoldMm, startFoldAngle, startFoldDir,
+        endFold, endFoldMm, endFoldAngle, endFoldDir,
+      }));
+    } catch { /* ignore */ }
 
     try {
       addItem({
@@ -294,7 +371,7 @@ export default function FlashingConfigurator() {
           _id: 'flashing-custom',
           name: `${label} — ${material} ${colour}`,
           slug: 'custom-flashing',
-          sku: `FLASH-${material.replace(/\s+/g, '').toUpperCase()}-${totalGirth}`,
+          sku: lookupSku || `FC${roundedGirth}G${foldCount}F`,
           images: diagramImage ? [{ url: diagramImage, alt: `${label} diagram` }] : [],
         },
         selectedAttributes: attrs,
@@ -358,80 +435,49 @@ export default function FlashingConfigurator() {
     if (foldType === 'Nothing') return null;
     const foldMm = isStart ? startFoldMm : endFoldMm;
     const foldDir = isStart ? startFoldDir : endFoldDir;
-    const foldAngle = isStart ? startFoldAngle : endFoldAngle;
-    if (foldMm <= 0) return null;
 
     const secondPoint = isStart ? points[1] : points[points.length - 2];
     if (!secondPoint) return null;
 
-    // Direction along the line FROM the endpoint TOWARD its neighbor
-    const dx = secondPoint.x - point.x;
-    const dy = secondPoint.y - point.y;
-    const len = Math.sqrt(dx * dx + dy * dy);
-    if (len === 0) return null;
+    // Direction of the last/first segment AT the endpoint
+    // For end point: direction FROM second-last TO last (continuing the line)
+    // For start point: direction FROM second TO first (backward from profile)
+    const dx = point.x - secondPoint.x;
+    const dy = point.y - secondPoint.y;
+    const segLen = Math.sqrt(dx * dx + dy * dy);
+    if (segLen === 0) return null;
 
-    // Angle of the line segment in radians
-    const lineAngle = Math.atan2(dy, dx);
+    // Angle of the last segment direction (the direction the line is going at this endpoint)
+    const segAngle = Math.atan2(dy, dx);
 
-    // Perpendicular direction sign: Up (inside) vs Down (outside)
-    const sign = foldDir === 'Up' ? -1 : 1;
+    // Use the user's entered angle for the bend
+    const sign = foldDir === 'Up' ? 1 : -1;
+    const userAngle = isStart ? startFoldAngle : endFoldAngle;
+    const bendRad = (userAngle * Math.PI / 180) * sign;
+    const foldAngle = segAngle + bendRad;
 
-    // Scale fold line length proportionally (1mm = ~0.3px in SVG, min 8px)
-    const foldLen = Math.max(8, foldMm * 0.3);
+    // Length of the fold line
+    const foldLineLen = Math.max(20, (foldMm || 15) * 0.5);
 
-    // The fold goes perpendicular to the line (90 degrees)
-    const perpAngle = lineAngle + (sign * Math.PI / 2);
-    const foldEndX = point.x + Math.cos(perpAngle) * foldLen;
-    const foldEndY = point.y + Math.sin(perpAngle) * foldLen;
+    // End point of the fold line
+    const extEndX = point.x + Math.cos(foldAngle) * foldLineLen;
+    const extEndY = point.y + Math.sin(foldAngle) * foldLineLen;
 
-    // The return bend uses the user's angle
-    // Convert fold angle to radians — angle is measured from the fold line back
-    const returnLen = foldLen * 0.6;
-    const angleRad = (foldAngle * Math.PI) / 180;
-
-    // Label
     const foldLabel = foldType === 'Hook Fold' ? 'HF' : foldType === 'Squash Fold' ? 'SF' : 'SSF';
 
-    let foldPath = '';
-    if (foldType === 'Hook Fold') {
-      // Hook: go perpendicular, then bend back at the specified angle
-      const returnAngle = perpAngle + Math.PI - angleRad;
-      const returnX = foldEndX + Math.cos(returnAngle) * returnLen;
-      const returnY = foldEndY + Math.sin(returnAngle) * returnLen;
-      foldPath = `M ${point.x} ${point.y} L ${foldEndX} ${foldEndY} L ${returnX} ${returnY}`;
-    } else if (foldType === 'Squash Fold') {
-      // Squash: go perpendicular, then fold flat (angle determines how flat)
-      const returnAngle = perpAngle + angleRad - Math.PI;
-      const returnX = foldEndX + Math.cos(returnAngle) * returnLen;
-      const returnY = foldEndY + Math.sin(returnAngle) * returnLen;
-      foldPath = `M ${point.x} ${point.y} L ${foldEndX} ${foldEndY} L ${returnX} ${returnY}`;
-    } else if (foldType === 'Semi Squash Fold') {
-      // Semi squash: partial fold back
-      const returnAngle = perpAngle + (Math.PI - angleRad) * 0.5;
-      const returnX = foldEndX + Math.cos(returnAngle) * returnLen;
-      const returnY = foldEndY + Math.sin(returnAngle) * returnLen;
-      foldPath = `M ${point.x} ${point.y} L ${foldEndX} ${foldEndY} L ${returnX} ${returnY}`;
-    }
+    const foldPath = `M ${point.x} ${point.y} L ${extEndX} ${extEndY}`;
 
     return (
       <g key={`fold-${isStart ? 'start' : 'end'}`}>
         <path d={foldPath} fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        {/* Fold label with mm and angle */}
+        {/* Fold label */}
         <text
-          x={foldEndX + (foldEndX - point.x) * 0.3}
-          y={foldEndY + (foldEndY - point.y) * 0.3}
+          x={extEndX + (extEndX - point.x) * 0.3}
+          y={extEndY + (extEndY - point.y) * 0.3}
           textAnchor="middle"
-          className="text-[7px] font-bold fill-red-600 select-none pointer-events-none"
+          className="text-[9px] font-bold fill-red-600 select-none pointer-events-none"
         >
-          {foldLabel} {foldMm}mm
-        </text>
-        <text
-          x={foldEndX + (foldEndX - point.x) * 0.3}
-          y={foldEndY + (foldEndY - point.y) * 0.3 + 9}
-          textAnchor="middle"
-          className="text-[6px] fill-red-500 select-none pointer-events-none"
-        >
-          {foldAngle}°
+          {foldLabel} {foldMm > 0 ? `${foldMm}mm` : ''}
         </text>
       </g>
     );
@@ -566,21 +612,23 @@ export default function FlashingConfigurator() {
                   const perpX = dist1 > dist2 ? perpX1 : perpX2;
                   const perpY = dist1 > dist2 ? perpY1 : perpY2;
 
-                  const offsetDist = 40;
+                  const offsetDist = 25;
                   const labelX = midX + perpX * offsetDist;
                   const labelY = midY + perpY * offsetDist;
                   const seg = segments[i];
                   if (!seg) return null;
 
+                  const letter = String.fromCharCode(65 + i);
+
                   return (
                     <g key={`seg-${i}`}>
                       <text
                         x={labelX}
-                        y={labelY + 4}
+                        y={labelY}
                         textAnchor="middle"
-                        className="text-[18px] font-bold fill-blue-600 select-none pointer-events-none"
+                        className="text-[14px] font-bold fill-blue-600 select-none pointer-events-none"
                       >
-                        {seg.lengthMm}
+                        {seg.lengthMm > 0 ? seg.lengthMm : letter}
                       </text>
                     </g>
                   );
@@ -634,7 +682,7 @@ export default function FlashingConfigurator() {
                 const nbisY = bisY / bisLen;
 
                 // Position angle label along the bisector, far from the fold point
-                const angleLabelDist = 35;
+                const angleLabelDist = 25;
                 const angleLabelX = p.x + nbisX * angleLabelDist;
                 const angleLabelY = p.y + nbisY * angleLabelDist;
 
@@ -865,7 +913,7 @@ export default function FlashingConfigurator() {
             <div key={i} className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="flex items-center justify-center h-6 w-6 rounded-full bg-brand-100 text-brand-700 text-[10px] font-bold flex-shrink-0">
-                  {i + 1}
+                  {String.fromCharCode(65 + i)}
                 </span>
                 <input
                   type="number"
@@ -945,7 +993,7 @@ export default function FlashingConfigurator() {
             Material <span className="text-red-500">*</span>
           </label>
           <div className="flex flex-wrap gap-2">
-            {Object.keys(MATERIAL_PRICING).map((mat) => (
+            {Object.keys(COLOUR_OPTIONS).map((mat) => (
               <button
                 key={mat}
                 onClick={() => setMaterial(mat)}
@@ -968,7 +1016,7 @@ export default function FlashingConfigurator() {
             Gauge <span className="text-red-500">*</span>
           </label>
           <div className="flex flex-wrap gap-2">
-            {GAUGE_OPTIONS.map((g) => (
+            {(GAUGE_BY_MATERIAL[material] || ['0.55mm']).map((g: string) => (
               <button
                 key={g}
                 onClick={() => setGauge(g)}
@@ -986,8 +1034,8 @@ export default function FlashingConfigurator() {
         </div>
       </div>
 
-      {/* Colour */}
-      <div>
+      {/* Colour — only show after material is selected */}
+      {material && <div>
         <label className="mb-2 block text-sm font-bold text-steel-900">
           Colour <span className="text-red-500">*</span>
           {colour && <span className="ml-2 font-normal text-steel-500">— {colour}</span>}
@@ -1008,7 +1056,7 @@ export default function FlashingConfigurator() {
             </button>
           ))}
         </div>
-      </div>
+      </div>}
 
       {/* ── SUMMARY & PRICE ── */}
       <div className="rounded-2xl bg-steel-50 border border-steel-200 p-4 sm:p-6 space-y-4">
@@ -1018,18 +1066,22 @@ export default function FlashingConfigurator() {
           <div className="text-sm text-brand-600 font-semibold">{tagName}</div>
         )}
 
-        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="text-center rounded-xl bg-white p-3 border border-steel-100">
-            <div className="text-xl sm:text-2xl font-bold text-brand-600">{totalGirth}<span className="text-xs sm:text-sm font-normal text-steel-500">mm</span></div>
+            <div className="text-xl font-bold text-brand-600">{totalGirth}<span className="text-xs font-normal text-steel-500">mm</span></div>
             <div className="text-xs text-steel-500 mt-1">Total Girth</div>
           </div>
           <div className="text-center rounded-xl bg-white p-3 border border-steel-100">
-            <div className="text-xl sm:text-2xl font-bold text-amber-600">{foldCount}</div>
+            <div className="text-xl font-bold text-amber-600">{foldCount}</div>
             <div className="text-xs text-steel-500 mt-1">Folds</div>
           </div>
           <div className="text-center rounded-xl bg-white p-3 border border-steel-100">
-            <div className="text-xl sm:text-2xl font-bold text-steel-700">{segments.length}</div>
-            <div className="text-xs text-steel-500 mt-1">Segments</div>
+            <div className="text-sm font-bold text-steel-700 truncate">{material || '—'}</div>
+            <div className="text-xs text-steel-500 mt-1">Material</div>
+          </div>
+          <div className="text-center rounded-xl bg-white p-3 border border-steel-100">
+            <div className="text-sm font-bold text-steel-700 truncate">{colour || '—'}</div>
+            <div className="text-xs text-steel-500 mt-1">Colour</div>
           </div>
         </div>
 
@@ -1051,39 +1103,15 @@ export default function FlashingConfigurator() {
 
         <div className="border-t border-steel-200 pt-4 space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-steel-600">Base rate ({material}, {gauge}):</span>
-            <span className="font-medium">{formatCurrency(baseRatePerMetre * gaugeMultiplier)}/m</span>
+            <span className="text-steel-600">Price:</span>
+            <span className="font-semibold text-steel-900">
+              {priceLoading ? 'Loading...' : lookupPrice !== null ? formatCurrency(unitPrice) : 'Price on request'}
+            </span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-steel-600">Girth: {totalGirth}mm = {totalGirthMetres.toFixed(3)}m</span>
-            <span className="font-medium">{formatCurrency(baseRatePerMetre * gaugeMultiplier * totalGirthMetres)}</span>
-          </div>
-          {foldCount > 0 && (
+          {flashingLength > 0 && lookupPrice !== null && (
             <div className="flex justify-between text-sm">
-              <span className="text-steel-600">Folds ({foldCount} x ${FOLD_COST.toFixed(2)}):</span>
-              <span className="font-medium">{formatCurrency(foldCost)}</span>
-            </div>
-          )}
-          {startFoldCost > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-steel-600">Start {startFold} ({startFoldMm}mm, {startFoldDir === 'Up' ? 'Inside' : 'Outside'}):</span>
-              <span className="font-medium">{formatCurrency(startFoldCost)}</span>
-            </div>
-          )}
-          {endFoldCost > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-steel-600">End {endFold} ({endFoldMm}mm, {endFoldDir === 'Up' ? 'Inside' : 'Outside'}):</span>
-              <span className="font-medium">{formatCurrency(endFoldCost)}</span>
-            </div>
-          )}
-          <div className="flex justify-between text-sm">
-            <span className="text-steel-600">Unit price:</span>
-            <span className="font-semibold text-steel-900">{formatCurrency(unitPrice)}</span>
-          </div>
-          {quantity > 1 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-steel-600">Qty x {quantity}:</span>
-              <span className="font-medium">{formatCurrency(lineTotal)}</span>
+              <span className="text-steel-600">{formatCurrency(unitPrice)} × {flashingLength}m</span>
+              <span className="font-medium">{formatCurrency(unitPrice * flashingLength)}</span>
             </div>
           )}
         </div>
@@ -1092,7 +1120,9 @@ export default function FlashingConfigurator() {
           <div className="flex items-baseline justify-between">
             <span className="text-base font-bold text-steel-900">Total:</span>
             <div className="text-right">
-              <span className="text-2xl font-bold text-steel-900">{formatCurrency(lineTotal)}</span>
+              <span className="text-2xl font-bold text-steel-900">
+                {lookupPrice !== null && flashingLength > 0 ? formatCurrency(unitPrice * flashingLength * quantity) : '$0.00'}
+              </span>
               <p className="text-xs text-steel-500">Excl. GST</p>
             </div>
           </div>

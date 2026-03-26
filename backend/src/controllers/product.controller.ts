@@ -11,6 +11,32 @@ import { AuthRequest } from '../middlewares/auth';
 
 // === PUBLIC ===
 
+export const getFlashingPrice = catchAsync(async (req: Request, res: Response) => {
+  const { girth, folds, material, thickness } = req.query;
+  if (!girth || !folds) throw ApiError.badRequest('girth and folds are required');
+
+  const girthNum = parseInt(girth as string);
+  const foldsNum = parseInt(folds as string);
+  const thicknessNum = parseFloat(thickness as string) || 0.55;
+  const materialStr = ((material as string) || 'COLORBOND').toUpperCase();
+
+  // Build SKU pattern: FC{girth}G{folds}F
+  const sku = `FC${girthNum}G${foldsNum}F`;
+
+  // Look up product by SKU
+  const product = await Product.findOne({
+    sku: { $regex: new RegExp(`^${sku}$`, 'i') },
+    status: 'active',
+  }).select('price sku name').lean();
+
+  if (product) {
+    ApiResponse.success({ res, data: { price: product.price, sku: product.sku, name: product.name } });
+  } else {
+    // Try broader match — find closest girth
+    ApiResponse.success({ res, data: { price: null, sku, name: null, message: 'Price not available for this configuration' } });
+  }
+});
+
 export const listProducts = catchAsync(async (req: Request, res: Response) => {
   const result = await productService.list(req.query as any);
   ApiResponse.paginated(res, result.products, result.total, result.page, result.limit);

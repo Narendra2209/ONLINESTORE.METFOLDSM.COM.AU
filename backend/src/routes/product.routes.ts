@@ -27,6 +27,7 @@ const upload = multer({
 const router = Router();
 
 // Public routes
+router.get('/flashing-price', productController.getFlashingPrice);
 router.get('/', productController.listProducts);
 router.get('/attributes/filterable', productController.getFilterableAttributes);
 router.get('/:slug', productController.getProductBySlug);
