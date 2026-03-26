@@ -36,10 +36,10 @@ function roundUpGirth(girth: number): number {
 
 const COLOUR_OPTIONS: Record<string, string[]> = {
   'Colorbond': [
-    'Basalt', 'Classic Cream', 'Cottage Green', 'Cove', 'Deep Ocean', 'Dover White', 'Dune',
-    'Evening Haze', 'Gully', 'Ironstone', 'Jasper', 'Mangrove', 'Manor Red',
+    'Basalt', 'Bluegum', 'Classic Cream', 'Cottage Green', 'Deep Ocean', 'Dover White', 'Dune',
+    'Evening Haze', 'Gully', 'Ironstone', 'Jasper', 'Manor Red',
     'Monument', 'Night Sky', 'Pale Eucalypt', 'Paperbark',
-    'Shale Grey', 'Southerly', 'Surfmist', 'Terrain', 'Wallaby',
+    'Shale Grey', 'Southerly', 'Surfmist', 'Wallaby',
     'Windspray', 'Woodland Grey',
   ],
   'Matt Colorbond': ['Basalt', 'Bluegum', 'Dune', 'Monument', 'Shale Grey', 'Surfmist'],
@@ -101,13 +101,13 @@ export default function FlashingConfigurator() {
 
   // Fold state
   const [startFold, setStartFold] = useState<FoldType>('Nothing');
-  const [startFoldMm, setStartFoldMm] = useState(0);
+  const [startFoldMm, setStartFoldMm] = useState(10);
   const [startFoldDir, setStartFoldDir] = useState<'Up' | 'Down'>('Up'); // Up=inside diagram, Down=outside diagram
-  const [startFoldAngle, setStartFoldAngle] = useState(140); // default Hook=140, Squash=180
+  const [startFoldAngle, setStartFoldAngle] = useState(130); // default Hook=130, Squash=180
   const [endFold, setEndFold] = useState<FoldType>('Nothing');
-  const [endFoldMm, setEndFoldMm] = useState(0);
+  const [endFoldMm, setEndFoldMm] = useState(10);
   const [endFoldDir, setEndFoldDir] = useState<'Up' | 'Down'>('Up');
-  const [endFoldAngle, setEndFoldAngle] = useState(140);
+  const [endFoldAngle, setEndFoldAngle] = useState(130);
   const [showStartFoldMenu, setShowStartFoldMenu] = useState(false);
   const [showEndFoldMenu, setShowEndFoldMenu] = useState(false);
 
@@ -115,7 +115,7 @@ export default function FlashingConfigurator() {
   const [foldAngles, setFoldAngles] = useState<number[]>([]);
 
   // Config state
-  const [material, setMaterial] = useState('Colorbond');
+  const [material, setMaterial] = useState('');
   const [colour, setColour] = useState('');
   const [colourSide, setColourSide] = useState<'Inside' | 'Outside'>('Outside'); // Which side has the colour
   const [gauge, setGauge] = useState('0.55mm');
@@ -123,31 +123,36 @@ export default function FlashingConfigurator() {
   const [flashingLength, setFlashingLength] = useState(0); // length in metres (max 8m)
   const [tagName, setTagName] = useState('');
 
-  // Load saved flashing config from localStorage (for Edit Flashing)
+  // Load saved flashing config ONLY when editing from cart (URL has ?edit=true)
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('flashingConfig');
-      if (saved) {
-        const cfg = JSON.parse(saved);
-        if (cfg.points?.length > 0) setPoints(cfg.points);
-        if (cfg.segments?.length > 0) setSegments(cfg.segments);
-        if (cfg.foldAngles) setFoldAngles(cfg.foldAngles);
-        if (cfg.material) setMaterial(cfg.material);
-        if (cfg.colour) setColour(cfg.colour);
-        if (cfg.colourSide) setColourSide(cfg.colourSide);
-        if (cfg.gauge) setGauge(cfg.gauge);
-        if (cfg.quantity) setQuantity(cfg.quantity);
-        if (cfg.flashingLength) setFlashingLength(cfg.flashingLength);
-        if (cfg.tagName) setTagName(cfg.tagName);
-        if (cfg.startFold) setStartFold(cfg.startFold);
-        if (cfg.startFoldMm) setStartFoldMm(cfg.startFoldMm);
-        if (cfg.startFoldAngle) setStartFoldAngle(cfg.startFoldAngle);
-        if (cfg.startFoldDir) setStartFoldDir(cfg.startFoldDir);
-        if (cfg.endFold) setEndFold(cfg.endFold);
-        if (cfg.endFoldMm) setEndFoldMm(cfg.endFoldMm);
-        if (cfg.endFoldAngle) setEndFoldAngle(cfg.endFoldAngle);
-        if (cfg.endFoldDir) setEndFoldDir(cfg.endFoldDir);
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('edit') === 'true') {
+        const saved = localStorage.getItem('flashingConfig');
+        if (saved) {
+          const cfg = JSON.parse(saved);
+          if (cfg.points?.length > 0) setPoints(cfg.points);
+          if (cfg.segments?.length > 0) setSegments(cfg.segments);
+          if (cfg.foldAngles) setFoldAngles(cfg.foldAngles);
+          if (cfg.material) setMaterial(cfg.material);
+          if (cfg.colour) setColour(cfg.colour);
+          if (cfg.colourSide) setColourSide(cfg.colourSide);
+          if (cfg.gauge) setGauge(cfg.gauge);
+          if (cfg.quantity) setQuantity(cfg.quantity);
+          if (cfg.flashingLength) setFlashingLength(cfg.flashingLength);
+          if (cfg.tagName) setTagName(cfg.tagName);
+          if (cfg.startFold) setStartFold(cfg.startFold);
+          if (cfg.startFoldMm) setStartFoldMm(cfg.startFoldMm);
+          if (cfg.startFoldAngle) setStartFoldAngle(cfg.startFoldAngle);
+          if (cfg.startFoldDir) setStartFoldDir(cfg.startFoldDir);
+          if (cfg.endFold) setEndFold(cfg.endFold);
+          if (cfg.endFoldMm) setEndFoldMm(cfg.endFoldMm);
+          if (cfg.endFoldAngle) setEndFoldAngle(cfg.endFoldAngle);
+          if (cfg.endFoldDir) setEndFoldDir(cfg.endFoldDir);
+        }
       }
+      // Always clear saved config after loading
+      localStorage.removeItem('flashingConfig');
     } catch { /* ignore */ }
   }, []);
 
@@ -182,7 +187,8 @@ export default function FlashingConfigurator() {
 
   // ── CALCULATIONS ──
 
-  const totalGirth = segments.reduce((sum, s) => sum + s.lengthMm, 0);
+  const segmentGirth = segments.reduce((sum, s) => sum + s.lengthMm, 0);
+  const totalGirth = segmentGirth + (startFold !== 'Nothing' ? startFoldMm : 0) + (endFold !== 'Nothing' ? endFoldMm : 0);
   // Fold count: interior folds + start/end fold type adds
   // Hook = +1 fold, Squash/Semi Squash = +2 folds
   const startFoldExtra = startFold === 'Hook Fold' ? 1 : (startFold === 'Squash Fold' || startFold === 'Semi Squash Fold') ? 2 : 0;
@@ -802,7 +808,7 @@ export default function FlashingConfigurator() {
                       key={opt}
                       onClick={() => {
                         setStartFold(opt); setShowStartFoldMenu(false);
-                        if (opt === 'Hook Fold') setStartFoldAngle(140);
+                        if (opt === 'Hook Fold') setStartFoldAngle(130);
                         else if (opt === 'Squash Fold') setStartFoldAngle(180);
                         else if (opt === 'Semi Squash Fold') setStartFoldAngle(160);
                       }}
@@ -812,18 +818,12 @@ export default function FlashingConfigurator() {
                 </div>
               )}
               {startFold !== 'Nothing' && (
-                <div className="mt-1 grid grid-cols-2 gap-1">
-                  <div className="flex items-center gap-0.5">
-                    <input type="number" min={0} value={startFoldMm} onChange={(e) => setStartFoldMm(Math.max(0, parseInt(e.target.value) || 0))} className="w-full rounded border border-steel-300 px-1 py-1 text-[10px] text-center" />
-                    <span className="text-[9px] text-steel-500">mm</span>
-                  </div>
-                  <div className="flex items-center gap-0.5">
-                    <input type="number" min={0} max={360} value={startFoldAngle} onChange={(e) => setStartFoldAngle(Math.max(0, Math.min(360, parseInt(e.target.value) || 0)))} className="w-full rounded border border-steel-300 px-1 py-1 text-[10px] text-center" />
-                    <span className="text-[9px] text-steel-500">°</span>
-                  </div>
-                  <select value={startFoldDir} onChange={(e) => setStartFoldDir(e.target.value as 'Up' | 'Down')} className="col-span-2 rounded border border-steel-300 px-1 py-1 text-[10px]">
-                    <option value="Up">Up (Inside)</option>
-                    <option value="Down">Down (Outside)</option>
+                <div className="mt-1 flex items-center gap-1">
+                  <input type="number" min={0} value={startFoldMm} onChange={(e) => setStartFoldMm(Math.max(0, parseInt(e.target.value) || 0))} className="w-12 rounded border border-steel-300 px-1 py-1 text-[10px] text-center" />
+                  <span className="text-[9px] text-steel-500">mm</span>
+                  <select value={startFoldDir} onChange={(e) => setStartFoldDir(e.target.value as 'Up' | 'Down')} className="flex-1 rounded border border-steel-300 px-1 py-1 text-[10px]">
+                    <option value="Down">Outside</option>
+                    <option value="Up">Inside</option>
                   </select>
                 </div>
               )}
@@ -844,7 +844,7 @@ export default function FlashingConfigurator() {
                       key={opt}
                       onClick={() => {
                         setEndFold(opt); setShowEndFoldMenu(false);
-                        if (opt === 'Hook Fold') setEndFoldAngle(140);
+                        if (opt === 'Hook Fold') setEndFoldAngle(130);
                         else if (opt === 'Squash Fold') setEndFoldAngle(180);
                         else if (opt === 'Semi Squash Fold') setEndFoldAngle(160);
                       }}
@@ -854,18 +854,12 @@ export default function FlashingConfigurator() {
                 </div>
               )}
               {endFold !== 'Nothing' && (
-                <div className="mt-1 grid grid-cols-2 gap-1">
-                  <div className="flex items-center gap-0.5">
-                    <input type="number" min={0} value={endFoldMm} onChange={(e) => setEndFoldMm(Math.max(0, parseInt(e.target.value) || 0))} className="w-full rounded border border-steel-300 px-1 py-1 text-[10px] text-center" />
-                    <span className="text-[9px] text-steel-500">mm</span>
-                  </div>
-                  <div className="flex items-center gap-0.5">
-                    <input type="number" min={0} max={360} value={endFoldAngle} onChange={(e) => setEndFoldAngle(Math.max(0, Math.min(360, parseInt(e.target.value) || 0)))} className="w-full rounded border border-steel-300 px-1 py-1 text-[10px] text-center" />
-                    <span className="text-[9px] text-steel-500">°</span>
-                  </div>
-                  <select value={endFoldDir} onChange={(e) => setEndFoldDir(e.target.value as 'Up' | 'Down')} className="col-span-2 rounded border border-steel-300 px-1 py-1 text-[10px]">
-                    <option value="Up">Up (Inside)</option>
-                    <option value="Down">Down (Outside)</option>
+                <div className="mt-1 flex items-center gap-1">
+                  <input type="number" min={0} value={endFoldMm} onChange={(e) => setEndFoldMm(Math.max(0, parseInt(e.target.value) || 0))} className="w-12 rounded border border-steel-300 px-1 py-1 text-[10px] text-center" />
+                  <span className="text-[9px] text-steel-500">mm</span>
+                  <select value={endFoldDir} onChange={(e) => setEndFoldDir(e.target.value as 'Up' | 'Down')} className="flex-1 rounded border border-steel-300 px-1 py-1 text-[10px]">
+                    <option value="Down">Outside</option>
+                    <option value="Up">Inside</option>
                   </select>
                 </div>
               )}

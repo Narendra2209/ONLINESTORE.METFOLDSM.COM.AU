@@ -457,7 +457,7 @@ export default function CartPage() {
                       <p className="text-xs text-steel-400">SKU: {item.product.sku}</p>
                       {item.product.slug === 'custom-flashing' && (
                         <Link
-                          href="/flashing"
+                          href="/flashing?edit=true"
                           className="text-[10px] font-semibold text-brand-600 hover:text-brand-700 bg-brand-50 px-2 py-0.5 rounded transition-colors"
                         >
                           Edit Flashing
