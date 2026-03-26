@@ -112,6 +112,7 @@ export default function FlashingConfigurator() {
   const [colourSide, setColourSide] = useState<'Inside' | 'Outside'>('Outside'); // Which side has the colour
   const [gauge, setGauge] = useState('0.42mm');
   const [quantity, setQuantity] = useState(1);
+  const [flashingLength, setFlashingLength] = useState(0); // length in metres (max 8m)
   const [tagName, setTagName] = useState('');
 
   // Keep segments array in sync with points count
@@ -162,8 +163,8 @@ export default function FlashingConfigurator() {
     const svg = svgRef.current!;
     const rect = svg.getBoundingClientRect();
     return {
-      x: Math.round(((e.clientX - rect.left) / rect.width) * 500),
-      y: Math.round(((e.clientY - rect.top) / rect.height) * 300),
+      x: Math.round(((e.clientX - rect.left) / rect.width) * 700),
+      y: Math.round(((e.clientY - rect.top) / rect.height) * 400),
     };
   }, []);
 
@@ -229,13 +230,14 @@ export default function FlashingConfigurator() {
     setEndFoldAngle(140);
     setFoldAngles([]);
     setColourSide('Outside');
+    setFlashingLength(0);
     setTagName('');
   };
 
   const updateSegmentLength = (idx: number, value: number) => {
     setSegments((prev) => {
       const next = [...prev];
-      next[idx] = { ...next[idx], lengthMm: Math.max(1, value) };
+      next[idx] = { ...next[idx], lengthMm: Math.max(1, Math.min(8000, value)) };
       return next;
     });
   };
@@ -268,6 +270,7 @@ export default function FlashingConfigurator() {
       { attributeName: 'Colour Side', value: colourSide },
       { attributeName: 'Gauge', value: gauge },
       { attributeName: 'Total Girth', value: `${totalGirth}mm` },
+      ...(flashingLength > 0 ? [{ attributeName: 'Length', value: `${flashingLength}m` }] : []),
       { attributeName: 'Folds', value: String(foldCount) },
       ...(startFold !== 'Nothing' ? [{ attributeName: 'Start Fold', value: `${startFold} — ${startFoldMm}mm, ${startFoldAngle}°, ${startFoldDir === 'Up' ? 'Inside' : 'Outside'}` }] : []),
       ...(endFold !== 'Nothing' ? [{ attributeName: 'End Fold', value: `${endFold} — ${endFoldMm}mm, ${endFoldAngle}°, ${endFoldDir === 'Up' ? 'Inside' : 'Outside'}` }] : []),
@@ -438,377 +441,395 @@ export default function FlashingConfigurator() {
           </button>
         </div>
 
-        <div className="flex gap-3">
-        {/* LEFT: Diagram */}
-        <div className="flex-1 relative rounded-2xl border-2 border-dashed border-steel-300 bg-steel-50/50 overflow-hidden">
-          <svg
-            ref={svgRef}
-            viewBox="0 0 700 400"
-            className="w-full h-[400px] sm:h-[500px] md:h-[600px] cursor-crosshair"
-            onClick={handleSvgClick}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-          >
-            {/* Grid */}
-            <defs>
-              <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e2e8f0" strokeWidth="0.5" />
-              </pattern>
-            </defs>
-            <rect width="700" height="400" fill="url(#grid)" />
+        <div className="flex flex-col md:flex-row gap-3">
+          {/* LEFT: Diagram */}
+          <div className="flex-1 relative rounded-2xl border-2 border-dashed border-steel-300 bg-steel-50/50 overflow-hidden">
+            <svg
+              ref={svgRef}
+              viewBox="0 0 700 400"
+              className="w-full h-[350px] sm:h-[400px] md:h-[450px] cursor-crosshair"
+              onClick={handleSvgClick}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+            >
+              {/* Grid */}
+              <defs>
+                <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                  <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e2e8f0" strokeWidth="0.5" />
+                </pattern>
+              </defs>
+              <rect width="700" height="400" fill="url(#grid)" />
 
-            {/* Profile path */}
-            {points.length >= 2 && (
-              <path
-                d={pointsToSvgPath(points)}
-                fill="none"
-                stroke="#2563eb"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            )}
+              {/* Profile path */}
+              {points.length >= 2 && (
+                <path
+                  d={pointsToSvgPath(points)}
+                  fill="none"
+                  stroke="#2563eb"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
 
-            {/* Colour side indicator — coloured offset line on the colour side */}
-            {points.length >= 2 && points.map((p, i) => {
-              if (i === points.length - 1) return null;
-              const next = points[i + 1];
-              const dx = next.x - p.x;
-              const dy = next.y - p.y;
-              const len = Math.sqrt(dx * dx + dy * dy) || 1;
+              {/* Colour side indicator — coloured offset line on the colour side */}
+              {points.length >= 2 && points.map((p, i) => {
+                if (i === points.length - 1) return null;
+                const next = points[i + 1];
+                const dx = next.x - p.x;
+                const dy = next.y - p.y;
+                const len = Math.sqrt(dx * dx + dy * dy) || 1;
 
-              // Perpendicular offset direction
-              const perpX = -dy / len;
-              const perpY = dx / len;
-              const sign = colourSide === 'Inside' ? 1 : -1;
-              const offset = 6; // pixels offset from main line
+                // Perpendicular offset direction
+                const perpX = -dy / len;
+                const perpY = dx / len;
+                const sign = colourSide === 'Inside' ? 1 : -1;
+                const offset = 6; // pixels offset from main line
 
-              const x1 = p.x + perpX * offset * sign;
-              const y1 = p.y + perpY * offset * sign;
-              const x2 = next.x + perpX * offset * sign;
-              const y2 = next.y + perpY * offset * sign;
+                const x1 = p.x + perpX * offset * sign;
+                const y1 = p.y + perpY * offset * sign;
+                const x2 = next.x + perpX * offset * sign;
+                const y2 = next.y + perpY * offset * sign;
 
-              // Midpoint for label
-              const mx = (x1 + x2) / 2 + perpX * 6 * sign;
-              const my = (y1 + y2) / 2 + perpY * 6 * sign;
+                // Midpoint for label
+                const mx = (x1 + x2) / 2 + perpX * 6 * sign;
+                const my = (y1 + y2) / 2 + perpY * 6 * sign;
 
-              return (
-                <g key={`colour-side-${i}`}>
-                  {/* Coloured dashed line on the colour side */}
-                  <line
-                    x1={x1} y1={y1} x2={x2} y2={y2}
-                    stroke={colourSide === 'Inside' ? '#dc2626' : '#2563eb'}
-                    strokeWidth="1.5"
-                    strokeDasharray="4 3"
-                    opacity="0.6"
-                  />
-                  {/* Small "C" label on first segment only */}
-                  {i === 0 && (
+                return (
+                  <g key={`colour-side-${i}`}>
+                    {/* Coloured dashed line on the colour side */}
+                    <line
+                      x1={x1} y1={y1} x2={x2} y2={y2}
+                      stroke={colourSide === 'Inside' ? '#dc2626' : '#2563eb'}
+                      strokeWidth="1.5"
+                      strokeDasharray="4 3"
+                      opacity="0.6"
+                    />
+                  </g>
+                );
+              })}
+
+              {/* Segment labels — positioned OUTSIDE the shape */}
+              {points.length >= 2 && (() => {
+                // Calculate centroid of all points (center of the shape)
+                const cx = points.reduce((s, pt) => s + pt.x, 0) / points.length;
+                const cy = points.reduce((s, pt) => s + pt.y, 0) / points.length;
+
+                return points.map((p, i) => {
+                  if (i === points.length - 1) return null;
+                  const next = points[i + 1];
+                  const dx = next.x - p.x;
+                  const dy = next.y - p.y;
+                  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                  const midX = (p.x + next.x) / 2;
+                  const midY = (p.y + next.y) / 2;
+
+                  // Two perpendicular directions
+                  const perpX1 = -dy / len;
+                  const perpY1 = dx / len;
+                  const perpX2 = dy / len;
+                  const perpY2 = -dx / len;
+
+                  // Pick the direction that points AWAY from the centroid (= outside)
+                  const test1X = midX + perpX1;
+                  const test1Y = midY + perpY1;
+                  const test2X = midX + perpX2;
+                  const test2Y = midY + perpY2;
+                  const dist1 = (test1X - cx) * (test1X - cx) + (test1Y - cy) * (test1Y - cy);
+                  const dist2 = (test2X - cx) * (test2X - cx) + (test2Y - cy) * (test2Y - cy);
+
+                  const perpX = dist1 > dist2 ? perpX1 : perpX2;
+                  const perpY = dist1 > dist2 ? perpY1 : perpY2;
+
+                  const offsetDist = 30;
+                  const labelX = midX + perpX * offsetDist;
+                  const labelY = midY + perpY * offsetDist;
+                  const seg = segments[i];
+                  if (!seg) return null;
+
+                  return (
+                    <g key={`seg-${i}`}>
+                      <text
+                        x={labelX}
+                        y={labelY + 4}
+                        textAnchor="middle"
+                        className="text-[18px] font-bold fill-blue-600 select-none pointer-events-none"
+                      >
+                        {seg.lengthMm}
+                      </text>
+                    </g>
+                  );
+                });
+              })()}
+
+              {/* Fold indicators at interior points — black triangle showing colour side + angle */}
+              {points.map((p, i) => {
+                if (i === 0 || i === points.length - 1) return null;
+                if (points.length < 3) return null;
+
+                const prev = points[i - 1];
+                const next = points[i + 1];
+
+                // Direction vectors
+                const dx1 = p.x - prev.x;
+                const dy1 = p.y - prev.y;
+                const dx2 = next.x - p.x;
+                const dy2 = next.y - p.y;
+
+                // Bisector direction (points inward)
+                const len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1) || 1;
+                const len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2) || 1;
+                const nx1 = dx1 / len1;
+                const ny1 = dy1 / len1;
+                const nx2 = dx2 / len2;
+                const ny2 = dy2 / len2;
+
+                // Perpendicular of incoming segment (left side = inside)
+                const perpX = -ny1;
+                const perpY = nx1;
+
+                // Triangle pointing to the colour side
+                const triSize = 7;
+                const sign = colourSide === 'Inside' ? 1 : -1;
+                const triTipX = p.x + perpX * triSize * sign;
+                const triTipY = p.y + perpY * triSize * sign;
+                const triBaseX1 = p.x + nx1 * 4;
+                const triBaseY1 = p.y + ny1 * 4;
+                const triBaseX2 = p.x - nx1 * 4;
+                const triBaseY2 = p.y - ny1 * 4;
+
+                const angle = foldAngles[i - 1] ?? 90;
+
+                // Bisector direction — points away from both segments (into the corner)
+                // Use the average of the two outward normals
+                const bisX = -(nx1 + nx2);
+                const bisY = -(ny1 + ny2);
+                const bisLen = Math.sqrt(bisX * bisX + bisY * bisY) || 1;
+                const nbisX = bisX / bisLen;
+                const nbisY = bisY / bisLen;
+
+                // Position angle label along the bisector, far from the fold point
+                const angleLabelDist = 35;
+                const angleLabelX = p.x + nbisX * angleLabelDist;
+                const angleLabelY = p.y + nbisY * angleLabelDist;
+
+                return (
+                  <g key={`fold-${i}`}>
+                    {/* Black filled triangle showing colour side */}
+                    <polygon
+                      points={`${triTipX},${triTipY} ${triBaseX1},${triBaseY1} ${triBaseX2},${triBaseY2}`}
+                      fill="#000000"
+                      stroke="#000000"
+                      strokeWidth="0.5"
+                    />
+                    {/* Angle label — red, positioned in the corner away from lines */}
                     <text
-                      x={mx} y={my}
+                      x={angleLabelX}
+                      y={angleLabelY + 5}
                       textAnchor="middle"
-                      dominantBaseline="middle"
-                      className="text-[7px] font-bold select-none pointer-events-none"
-                      fill={colourSide === 'Inside' ? '#dc2626' : '#2563eb'}
+                      className="text-[18px] font-bold fill-red-600 select-none pointer-events-none"
                     >
-                      {colourSide === 'Inside' ? '← COLOUR INSIDE' : '← COLOUR OUTSIDE'}
+                      {angle}°
                     </text>
-                  )}
-                </g>
-              );
-            })}
+                  </g>
+                );
+              })}
 
-            {/* Segment labels — positioned above the line */}
-            {points.length >= 2 && points.map((p, i) => {
-              if (i === points.length - 1) return null;
-              const next = points[i + 1];
-              const dx = next.x - p.x;
-              const dy = next.y - p.y;
-              const len = Math.sqrt(dx * dx + dy * dy) || 1;
-              const midX = (p.x + next.x) / 2;
-              const midY = (p.y + next.y) / 2;
-              // Offset above the line (perpendicular)
-              const perpX = -dy / len;
-              const perpY = dx / len;
-              const offsetDist = 16;
-              const labelX = midX + perpX * offsetDist;
-              const labelY = midY + perpY * offsetDist;
-              const seg = segments[i];
-              if (!seg) return null;
+              {/* Start/End fold type indicators */}
+              {points.length >= 2 && renderFoldIndicator(points[0], startFold, true)}
+              {points.length >= 2 && renderFoldIndicator(points[points.length - 1], endFold, false)}
 
-              return (
-                <g key={`seg-${i}`}>
-                  <text
-                    x={labelX}
-                    y={labelY + 4}
-                    textAnchor="middle"
-                    className="text-[10px] font-bold fill-red-600 select-none pointer-events-none"
-                  >
-                    {seg.lengthMm}
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* Fold indicators at interior points — black triangle showing colour side + angle */}
-            {points.map((p, i) => {
-              if (i === 0 || i === points.length - 1) return null;
-              if (points.length < 3) return null;
-
-              const prev = points[i - 1];
-              const next = points[i + 1];
-
-              // Direction vectors
-              const dx1 = p.x - prev.x;
-              const dy1 = p.y - prev.y;
-              const dx2 = next.x - p.x;
-              const dy2 = next.y - p.y;
-
-              // Bisector direction (points inward)
-              const len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1) || 1;
-              const len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2) || 1;
-              const nx1 = dx1 / len1;
-              const ny1 = dy1 / len1;
-              const nx2 = dx2 / len2;
-              const ny2 = dy2 / len2;
-
-              // Perpendicular of incoming segment (left side = inside)
-              const perpX = -ny1;
-              const perpY = nx1;
-
-              // Triangle pointing to the colour side
-              const triSize = 7;
-              const sign = colourSide === 'Inside' ? 1 : -1;
-              const triTipX = p.x + perpX * triSize * sign;
-              const triTipY = p.y + perpY * triSize * sign;
-              const triBaseX1 = p.x + nx1 * 4;
-              const triBaseY1 = p.y + ny1 * 4;
-              const triBaseX2 = p.x - nx1 * 4;
-              const triBaseY2 = p.y - ny1 * 4;
-
-              const angle = foldAngles[i - 1] ?? 90;
-
-              return (
-                <g key={`fold-${i}`}>
-                  {/* Black filled triangle showing colour side */}
-                  <polygon
-                    points={`${triTipX},${triTipY} ${triBaseX1},${triBaseY1} ${triBaseX2},${triBaseY2}`}
-                    fill="#000000"
-                    stroke="#000000"
-                    strokeWidth="0.5"
-                  />
-                  {/* Angle label */}
-                  <text
-                    x={p.x - perpX * sign * 12}
-                    y={p.y - perpY * sign * 12}
-                    textAnchor="middle"
-                    className="text-[8px] font-bold fill-red-600 select-none pointer-events-none"
-                  >
-                    {angle}°
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* Start/End fold type indicators */}
-            {points.length >= 2 && renderFoldIndicator(points[0], startFold, true)}
-            {points.length >= 2 && renderFoldIndicator(points[points.length - 1], endFold, false)}
-
-            {/* Draggable points — endpoints have no visible dot (just drag handle), middle points are blue circles */}
-            {points.map((p, i) => {
-              const isEndpoint = i === 0 || i === points.length - 1;
-              const isOnlyPoint = points.length === 1;
-              return (
-                <g key={`pt-${i}`} className="point-handle" style={{ cursor: 'grab' }}>
-                  {/* Invisible larger hit area for dragging */}
-                  <circle
-                    cx={p.x}
-                    cy={p.y}
-                    r="12"
-                    fill="transparent"
-                    onMouseDown={(e) => handlePointMouseDown(i, e)}
-                  />
-                  {/* Green dot for the single starting point, blue dots for fold points, no dots at start/end once lines exist */}
-                  {(isOnlyPoint || !isEndpoint) && (
+              {/* Draggable points — small open circles at all points like reference image */}
+              {points.map((p, i) => {
+                const isOnlyPoint = points.length === 1;
+                return (
+                  <g key={`pt-${i}`} className="point-handle" style={{ cursor: 'grab' }}>
+                    {/* Invisible larger hit area for dragging */}
                     <circle
                       cx={p.x}
                       cy={p.y}
-                      r={isOnlyPoint ? 6 : 8}
-                      fill={draggingIdx === i ? '#2563eb' : isOnlyPoint ? '#16a34a' : 'white'}
-                      stroke={isOnlyPoint ? '#15803d' : '#2563eb'}
-                      strokeWidth="2.5"
+                      r="14"
+                      fill="transparent"
                       onMouseDown={(e) => handlePointMouseDown(i, e)}
                     />
-                  )}
-                  {!isEndpoint && !isOnlyPoint && (
-                    <text
-                      x={p.x}
-                      y={p.y + 3.5}
-                      textAnchor="middle"
-                      className="text-[8px] font-bold fill-blue-600 select-none pointer-events-none"
-                    >
-                      {i}
-                    </text>
-                  )}
-                </g>
-              );
-            })}
+                    {/* Small open circle at every point */}
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r={isOnlyPoint ? 6 : 5}
+                      fill={isOnlyPoint ? '#16a34a' : 'white'}
+                      stroke={isOnlyPoint ? '#15803d' : '#6366f1'}
+                      strokeWidth="1.5"
+                      onMouseDown={(e) => handlePointMouseDown(i, e)}
+                    />
+                  </g>
+                );
+              })}
 
-            {/* Start/End labels — small text only, no dots */}
-            {points.length >= 2 && (
-              <>
-                <text x={points[0].x} y={points[0].y + 14} textAnchor="middle" className="text-[7px] font-semibold fill-steel-500 select-none pointer-events-none">
-                  S
+              {/* Colour side label — top right of diagram */}
+              {points.length >= 2 && (
+                <text x={680} y={20} textAnchor="end" className="text-[11px] font-bold select-none pointer-events-none" fill={colourSide === 'Inside' ? '#dc2626' : '#2563eb'}>
+                  Colour {colourSide}
                 </text>
-                <text x={points[points.length - 1].x} y={points[points.length - 1].y + 14} textAnchor="middle" className="text-[7px] font-semibold fill-steel-500 select-none pointer-events-none">
-                  E
-                </text>
-              </>
-            )}
+              )}
 
-            {/* Instructions */}
-            <text x="350" y="390" textAnchor="middle" className="text-[10px] fill-steel-400 select-none pointer-events-none">
-              Click to add points. Drag points to adjust shape.
-            </text>
-          </svg>
-        </div>
-
-        {/* RIGHT: Controls sidebar */}
-        <div className="w-[120px] flex-shrink-0 flex flex-col gap-1.5">
-          {/* Reverse Colour Side */}
-          <button
-            onClick={() => setColourSide(colourSide === 'Inside' ? 'Outside' : 'Inside')}
-            className="w-full py-2 text-[11px] font-semibold rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors"
-          >
-            Reverse Color
-          </button>
-          <p className="text-[9px] text-center text-steel-500">{colourSide}</p>
-
-          {/* Remove First */}
-          <button
-            onClick={removeFirst}
-            disabled={points.length <= 2}
-            className={cn(
-              'w-full flex items-center justify-center gap-1 px-2 py-2 text-[11px] font-semibold rounded-lg transition-colors',
-              points.length <= 2 ? 'bg-steel-100 text-steel-400 cursor-not-allowed' : 'bg-pink-500 text-white hover:bg-pink-600'
-            )}
-          >
-            Remove First
-          </button>
-
-          {/* Remove Last */}
-          <button
-            onClick={removeLast}
-            disabled={points.length <= 2}
-            className={cn(
-              'w-full flex items-center justify-center gap-1 px-2 py-2 text-[11px] font-semibold rounded-lg transition-colors',
-              points.length <= 2 ? 'bg-steel-100 text-steel-400 cursor-not-allowed' : 'bg-green-500 text-white hover:bg-green-600'
-            )}
-          >
-            Remove Last
-          </button>
-
-          {/* Start Fold */}
-          <div className="relative">
-            <button
-              onClick={() => { setShowStartFoldMenu(!showStartFoldMenu); setShowEndFoldMenu(false); }}
-              className="w-full flex items-center justify-center gap-1 px-2 py-2 text-[11px] font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-            >
-              Start Fold <ChevronDown className="h-3 w-3" />
-            </button>
-            {showStartFoldMenu && (
-              <div className="absolute left-0 top-full z-50 mt-1 w-full min-w-[160px] rounded-lg bg-white border border-steel-200 shadow-xl py-1">
-                {FOLD_OPTIONS.map((opt) => (
-                  <button
-                    key={opt}
-                    onClick={() => {
-                      setStartFold(opt); setShowStartFoldMenu(false);
-                      if (opt === 'Hook Fold') setStartFoldAngle(140);
-                      else if (opt === 'Squash Fold') setStartFoldAngle(180);
-                      else if (opt === 'Semi Squash Fold') setStartFoldAngle(160);
-                    }}
-                    className={cn('block w-full text-left px-3 py-1.5 text-xs hover:bg-steel-50', startFold === opt ? 'font-bold text-brand-600 bg-brand-50' : 'text-steel-700')}
-                  >{opt}</button>
-                ))}
-              </div>
-            )}
-            {startFold !== 'Nothing' && (
-              <div className="mt-1 grid grid-cols-2 gap-1">
-                <div className="flex items-center gap-0.5">
-                  <input type="number" min={0} value={startFoldMm} onChange={(e) => setStartFoldMm(Math.max(0, parseInt(e.target.value) || 0))} className="w-full rounded border border-steel-300 px-1 py-1 text-[10px] text-center" />
-                  <span className="text-[9px] text-steel-500">mm</span>
-                </div>
-                <div className="flex items-center gap-0.5">
-                  <input type="number" min={0} max={360} value={startFoldAngle} onChange={(e) => setStartFoldAngle(Math.max(0, Math.min(360, parseInt(e.target.value) || 0)))} className="w-full rounded border border-steel-300 px-1 py-1 text-[10px] text-center" />
-                  <span className="text-[9px] text-steel-500">°</span>
-                </div>
-                <select value={startFoldDir} onChange={(e) => setStartFoldDir(e.target.value as 'Up' | 'Down')} className="col-span-2 rounded border border-steel-300 px-1 py-1 text-[10px]">
-                  <option value="Up">Up (Inside)</option>
-                  <option value="Down">Down (Outside)</option>
-                </select>
-              </div>
-            )}
+              {/* Instructions */}
+              <text x="350" y="390" textAnchor="middle" className="text-[10px] fill-steel-400 select-none pointer-events-none">
+                Click to add points. Drag points to adjust shape.
+              </text>
+            </svg>
           </div>
 
-          {/* End Fold */}
-          <div className="relative">
+          {/* Controls — below on mobile, right side on desktop */}
+          <div className="md:w-[140px] flex-shrink-0 flex flex-wrap md:flex-col gap-2">
+            {/* Reverse Colour Side */}
             <button
-              onClick={() => { setShowEndFoldMenu(!showEndFoldMenu); setShowStartFoldMenu(false); }}
-              className="w-full flex items-center justify-center gap-1 px-2 py-2 text-[11px] font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
+              onClick={() => setColourSide(colourSide === 'Inside' ? 'Outside' : 'Inside')}
+              className="w-full py-2 text-[11px] font-semibold rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors"
             >
-              End Fold <ChevronDown className="h-3 w-3" />
+              Reverse Color
             </button>
-            {showEndFoldMenu && (
-              <div className="absolute left-0 top-full z-50 mt-1 w-full min-w-[160px] rounded-lg bg-white border border-steel-200 shadow-xl py-1">
-                {FOLD_OPTIONS.map((opt) => (
-                  <button
-                    key={opt}
-                    onClick={() => {
-                      setEndFold(opt); setShowEndFoldMenu(false);
-                      if (opt === 'Hook Fold') setEndFoldAngle(140);
-                      else if (opt === 'Squash Fold') setEndFoldAngle(180);
-                      else if (opt === 'Semi Squash Fold') setEndFoldAngle(160);
-                    }}
-                    className={cn('block w-full text-left px-3 py-1.5 text-xs hover:bg-steel-50', endFold === opt ? 'font-bold text-brand-600 bg-brand-50' : 'text-steel-700')}
-                  >{opt}</button>
-                ))}
-              </div>
-            )}
-            {endFold !== 'Nothing' && (
-              <div className="mt-1 grid grid-cols-2 gap-1">
-                <div className="flex items-center gap-0.5">
-                  <input type="number" min={0} value={endFoldMm} onChange={(e) => setEndFoldMm(Math.max(0, parseInt(e.target.value) || 0))} className="w-full rounded border border-steel-300 px-1 py-1 text-[10px] text-center" />
-                  <span className="text-[9px] text-steel-500">mm</span>
-                </div>
-                <div className="flex items-center gap-0.5">
-                  <input type="number" min={0} max={360} value={endFoldAngle} onChange={(e) => setEndFoldAngle(Math.max(0, Math.min(360, parseInt(e.target.value) || 0)))} className="w-full rounded border border-steel-300 px-1 py-1 text-[10px] text-center" />
-                  <span className="text-[9px] text-steel-500">°</span>
-                </div>
-                <select value={endFoldDir} onChange={(e) => setEndFoldDir(e.target.value as 'Up' | 'Down')} className="col-span-2 rounded border border-steel-300 px-1 py-1 text-[10px]">
-                  <option value="Up">Up (Inside)</option>
-                  <option value="Down">Down (Outside)</option>
-                </select>
-              </div>
-            )}
-          </div>
 
-          {/* Quantity */}
-          <div className="rounded-lg border border-steel-200 bg-white p-2">
-            <p className="text-[10px] font-bold text-steel-700 mb-1.5 text-center">Quantity</p>
-            <div className="flex items-center rounded border border-steel-300">
-              <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="px-2 py-1 text-steel-600 hover:bg-steel-50 text-sm">-</button>
+            {/* Remove First */}
+            <button
+              onClick={removeFirst}
+              disabled={points.length <= 2}
+              className={cn(
+                'w-full flex items-center justify-center gap-1 px-2 py-2 text-[11px] font-semibold rounded-lg transition-colors',
+                points.length <= 2 ? 'bg-steel-100 text-steel-400 cursor-not-allowed' : 'bg-pink-500 text-white hover:bg-pink-600'
+              )}
+            >
+              Remove First
+            </button>
+
+            {/* Remove Last */}
+            <button
+              onClick={removeLast}
+              disabled={points.length <= 2}
+              className={cn(
+                'w-full flex items-center justify-center gap-1 px-2 py-2 text-[11px] font-semibold rounded-lg transition-colors',
+                points.length <= 2 ? 'bg-steel-100 text-steel-400 cursor-not-allowed' : 'bg-green-500 text-white hover:bg-green-600'
+              )}
+            >
+              Remove Last
+            </button>
+
+            {/* Start Fold */}
+            <div className="relative">
+              <button
+                onClick={() => { setShowStartFoldMenu(!showStartFoldMenu); setShowEndFoldMenu(false); }}
+                className="w-full flex items-center justify-center gap-1 px-2 py-2 text-[11px] font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              >
+                Start Fold <ChevronDown className="h-3 w-3" />
+              </button>
+              {showStartFoldMenu && (
+                <div className="absolute left-0 top-full z-50 mt-1 w-full min-w-[160px] rounded-lg bg-white border border-steel-200 shadow-xl py-1">
+                  {FOLD_OPTIONS.map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => {
+                        setStartFold(opt); setShowStartFoldMenu(false);
+                        if (opt === 'Hook Fold') setStartFoldAngle(140);
+                        else if (opt === 'Squash Fold') setStartFoldAngle(180);
+                        else if (opt === 'Semi Squash Fold') setStartFoldAngle(160);
+                      }}
+                      className={cn('block w-full text-left px-3 py-1.5 text-xs hover:bg-steel-50', startFold === opt ? 'font-bold text-brand-600 bg-brand-50' : 'text-steel-700')}
+                    >{opt}</button>
+                  ))}
+                </div>
+              )}
+              {startFold !== 'Nothing' && (
+                <div className="mt-1 grid grid-cols-2 gap-1">
+                  <div className="flex items-center gap-0.5">
+                    <input type="number" min={0} value={startFoldMm} onChange={(e) => setStartFoldMm(Math.max(0, parseInt(e.target.value) || 0))} className="w-full rounded border border-steel-300 px-1 py-1 text-[10px] text-center" />
+                    <span className="text-[9px] text-steel-500">mm</span>
+                  </div>
+                  <div className="flex items-center gap-0.5">
+                    <input type="number" min={0} max={360} value={startFoldAngle} onChange={(e) => setStartFoldAngle(Math.max(0, Math.min(360, parseInt(e.target.value) || 0)))} className="w-full rounded border border-steel-300 px-1 py-1 text-[10px] text-center" />
+                    <span className="text-[9px] text-steel-500">°</span>
+                  </div>
+                  <select value={startFoldDir} onChange={(e) => setStartFoldDir(e.target.value as 'Up' | 'Down')} className="col-span-2 rounded border border-steel-300 px-1 py-1 text-[10px]">
+                    <option value="Up">Up (Inside)</option>
+                    <option value="Down">Down (Outside)</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Quantity */}
+            <div className="rounded-lg border border-steel-200 bg-white p-2">
+              <p className="text-[10px] font-bold text-steel-700 mb-1.5 text-center">Quantity</p>
+              <div className="flex items-center rounded border border-steel-300">
+                <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="px-2 py-1 text-steel-600 hover:bg-steel-50 text-sm">-</button>
+                <input
+                  type="number"
+                  min={1}
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-10 border-x border-steel-300 text-center py-1 text-xs"
+                />
+                <button onClick={() => setQuantity(quantity + 1)} className="px-2 py-1 text-steel-600 hover:bg-steel-50 text-sm">+</button>
+              </div>
+            </div>
+
+            {/* End Fold — at the bottom */}
+            <div className="relative">
+              <button
+                onClick={() => { setShowEndFoldMenu(!showEndFoldMenu); setShowStartFoldMenu(false); }}
+                className="w-full flex items-center justify-center gap-1 px-2 py-2 text-[11px] font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
+              >
+                End Fold <ChevronDown className="h-3 w-3" />
+              </button>
+              {showEndFoldMenu && (
+                <div className="absolute left-0 top-full z-50 mt-1 w-full min-w-[160px] rounded-lg bg-white border border-steel-200 shadow-xl py-1">
+                  {FOLD_OPTIONS.map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => {
+                        setEndFold(opt); setShowEndFoldMenu(false);
+                        if (opt === 'Hook Fold') setEndFoldAngle(140);
+                        else if (opt === 'Squash Fold') setEndFoldAngle(180);
+                        else if (opt === 'Semi Squash Fold') setEndFoldAngle(160);
+                      }}
+                      className={cn('block w-full text-left px-3 py-1.5 text-xs hover:bg-steel-50', endFold === opt ? 'font-bold text-brand-600 bg-brand-50' : 'text-steel-700')}
+                    >{opt}</button>
+                  ))}
+                </div>
+              )}
+              {endFold !== 'Nothing' && (
+                <div className="mt-1 grid grid-cols-2 gap-1">
+                  <div className="flex items-center gap-0.5">
+                    <input type="number" min={0} value={endFoldMm} onChange={(e) => setEndFoldMm(Math.max(0, parseInt(e.target.value) || 0))} className="w-full rounded border border-steel-300 px-1 py-1 text-[10px] text-center" />
+                    <span className="text-[9px] text-steel-500">mm</span>
+                  </div>
+                  <div className="flex items-center gap-0.5">
+                    <input type="number" min={0} max={360} value={endFoldAngle} onChange={(e) => setEndFoldAngle(Math.max(0, Math.min(360, parseInt(e.target.value) || 0)))} className="w-full rounded border border-steel-300 px-1 py-1 text-[10px] text-center" />
+                    <span className="text-[9px] text-steel-500">°</span>
+                  </div>
+                  <select value={endFoldDir} onChange={(e) => setEndFoldDir(e.target.value as 'Up' | 'Down')} className="col-span-2 rounded border border-steel-300 px-1 py-1 text-[10px]">
+                    <option value="Up">Up (Inside)</option>
+                    <option value="Down">Down (Outside)</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Length (metres) */}
+            <div className="rounded-lg border border-steel-200 bg-white p-2">
+              <p className="text-[10px] font-bold text-steel-700 mb-1.5 text-center">Length (m)</p>
               <input
                 type="number"
-                min={1}
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-10 border-x border-steel-300 text-center py-1 text-xs"
+                min={0}
+                max={8}
+                step={0.1}
+                value={flashingLength || ''}
+                onChange={(e) => setFlashingLength(Math.max(0, Math.min(8, parseFloat(e.target.value) || 0)))}
+                placeholder="Max 8m"
+                className="w-full rounded border border-steel-300 px-2 py-1 text-xs text-center font-medium focus:border-brand-500 focus:outline-none"
               />
-              <button onClick={() => setQuantity(quantity + 1)} className="px-2 py-1 text-steel-600 hover:bg-steel-50 text-sm">+</button>
             </div>
           </div>
-        </div>
         </div>{/* end flex row */}
       </div>
 
