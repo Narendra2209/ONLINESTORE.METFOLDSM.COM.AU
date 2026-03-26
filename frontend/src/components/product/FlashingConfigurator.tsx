@@ -120,7 +120,7 @@ export default function FlashingConfigurator() {
     if (points.length >= 2 && segments.length !== points.length - 1) {
       const newSegments: Segment[] = [];
       for (let i = 0; i < points.length - 1; i++) {
-        newSegments.push(segments[i] || { lengthMm: 50 });
+        newSegments.push(segments[i] || { lengthMm: 0 });
       }
       setSegments(newSegments);
     }
@@ -177,7 +177,7 @@ export default function FlashingConfigurator() {
 
     const pt = getSvgPoint(e);
     setPoints((prev) => [...prev, pt]);
-    setSegments((prev) => [...prev, { lengthMm: 50 }]);
+    setSegments((prev) => [...prev, { lengthMm: 0 }]);
   }, [draggingIdx, getSvgPoint]);
 
   const handlePointMouseDown = useCallback((idx: number, e: React.MouseEvent) => {
@@ -237,7 +237,7 @@ export default function FlashingConfigurator() {
   const updateSegmentLength = (idx: number, value: number) => {
     setSegments((prev) => {
       const next = [...prev];
-      next[idx] = { ...next[idx], lengthMm: Math.max(1, Math.min(8000, value)) };
+      next[idx] = { ...next[idx], lengthMm: Math.max(0, Math.min(8000, value)) };
       return next;
     });
   };
@@ -318,11 +318,35 @@ export default function FlashingConfigurator() {
   const captureDiagramImage = (): string => {
     try {
       const svg = svgRef.current;
-      if (!svg) return '';
-      const svgData = new XMLSerializer().serializeToString(svg);
-      // Encode properly to handle non-ASCII characters (arrows, degree symbols, etc.)
-      const encoded = encodeURIComponent(svgData);
-      return `data:image/svg+xml,${encoded}`;
+      if (!svg || points.length < 2) return '';
+
+      // Calculate bounding box of all points with padding
+      const pad = 60;
+      const minX = Math.min(...points.map(p => p.x)) - pad;
+      const minY = Math.min(...points.map(p => p.y)) - pad;
+      const maxX = Math.max(...points.map(p => p.x)) + pad;
+      const maxY = Math.max(...points.map(p => p.y)) + pad;
+      const w = maxX - minX;
+      const h = maxY - minY;
+
+      // Clone SVG and crop viewBox to the drawing area
+      const clone = svg.cloneNode(true) as SVGSVGElement;
+      clone.setAttribute('viewBox', `${minX} ${minY} ${w} ${h}`);
+      clone.setAttribute('width', String(w));
+      clone.setAttribute('height', String(h));
+
+      // White background instead of grid
+      const gridRect = clone.querySelector('rect');
+      if (gridRect) gridRect.setAttribute('fill', 'white');
+
+      // Remove instruction text and colour label
+      clone.querySelectorAll('text').forEach(t => {
+        const txt = t.textContent || '';
+        if (txt.includes('Click to add') || txt.includes('Colour')) t.remove();
+      });
+
+      const svgData = new XMLSerializer().serializeToString(clone);
+      return `data:image/svg+xml,${encodeURIComponent(svgData)}`;
     } catch {
       return '';
     }
@@ -542,7 +566,7 @@ export default function FlashingConfigurator() {
                   const perpX = dist1 > dist2 ? perpX1 : perpX2;
                   const perpY = dist1 > dist2 ? perpY1 : perpY2;
 
-                  const offsetDist = 30;
+                  const offsetDist = 40;
                   const labelX = midX + perpX * offsetDist;
                   const labelY = midY + perpY * offsetDist;
                   const seg = segments[i];
@@ -757,22 +781,6 @@ export default function FlashingConfigurator() {
               )}
             </div>
 
-            {/* Quantity */}
-            <div className="rounded-lg border border-steel-200 bg-white p-2">
-              <p className="text-[10px] font-bold text-steel-700 mb-1.5 text-center">Quantity</p>
-              <div className="flex items-center rounded border border-steel-300">
-                <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="px-2 py-1 text-steel-600 hover:bg-steel-50 text-sm">-</button>
-                <input
-                  type="number"
-                  min={1}
-                  value={quantity}
-                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-10 border-x border-steel-300 text-center py-1 text-xs"
-                />
-                <button onClick={() => setQuantity(quantity + 1)} className="px-2 py-1 text-steel-600 hover:bg-steel-50 text-sm">+</button>
-              </div>
-            </div>
-
             {/* End Fold — at the bottom */}
             <div className="relative">
               <button
@@ -813,6 +821,22 @@ export default function FlashingConfigurator() {
                   </select>
                 </div>
               )}
+            </div>
+
+            {/* Quantity */}
+            <div className="rounded-lg border border-steel-200 bg-white p-2">
+              <p className="text-[10px] font-bold text-steel-700 mb-1.5 text-center">Quantity</p>
+              <div className="flex items-center rounded border border-steel-300">
+                <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="px-2 py-1 text-steel-600 hover:bg-steel-50 text-sm">-</button>
+                <input
+                  type="number"
+                  min={1}
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-10 border-x border-steel-300 text-center py-1 text-xs"
+                />
+                <button onClick={() => setQuantity(quantity + 1)} className="px-2 py-1 text-steel-600 hover:bg-steel-50 text-sm">+</button>
+              </div>
             </div>
 
             {/* Length (metres) */}

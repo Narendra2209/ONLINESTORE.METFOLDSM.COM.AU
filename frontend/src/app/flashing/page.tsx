@@ -17,7 +17,7 @@ export default function FlashingPage() {
           ]}
         />
 
-        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[300px_1fr] xl:grid-cols-[320px_1fr]">
           {/* Left: Info (narrow) */}
           <div>
             <h1 className="text-xl font-bold text-steel-900 tracking-tight leading-tight">
