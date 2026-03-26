@@ -454,11 +454,8 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
           if (col) colourValuesForMaterial.add(col.value);
         }
       }
-      const matchingColour = Array.from(colourValuesForMaterial)[0] || '';
-
-      // Reset to only Material + Colour — clear dimensions so cascading filter starts fresh
+      // Reset to only Material — clear colour and dimensions so user must pick colour
       const newAttrs: Record<string, string> = { Material: material };
-      if (matchingColour) newAttrs['Colour'] = matchingColour;
 
       setSelectedAttributes(newAttrs);
       setSelectedColour('');
@@ -466,7 +463,19 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
 
     // Override handleAddToCart to include selectedColour
     const handleVariantAddToCart = () => {
-      if (!matchedVariant) return;
+      const hasColour = !!(selectedAttributes['Colour'] || selectedColour);
+      if (!hasColour && variantAttributeOptions['Colour']) {
+        toast.error('Please select a colour');
+        return;
+      }
+      if (!matchedVariant) {
+        if (!hasColour) {
+          toast.error('Please select a colour');
+        } else {
+          toast.error('Please select all required options');
+        }
+        return;
+      }
 
       const attrEntries = matchedVariant.attributes
         .filter((a) => a.attributeName !== 'Colour')
@@ -899,10 +908,10 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
         <div className="flex gap-3">
           {(
             <>
-              <Button size="lg" className="flex-1" leftIcon={<ShoppingCart className="h-5 w-5" />} onClick={handleVariantAddToCart} disabled={!matchedVariant}>
+              <Button size="lg" className="flex-1" leftIcon={<ShoppingCart className="h-5 w-5" />} onClick={handleVariantAddToCart}>
                 Add to Cart
               </Button>
-              <Button variant="outline" size="lg" leftIcon={<Zap className="h-5 w-5" />} disabled={!matchedVariant} onClick={() => { handleVariantAddToCart(); if (isAuthenticated) router.push('/cart'); }}>
+              <Button variant="outline" size="lg" leftIcon={<Zap className="h-5 w-5" />} onClick={() => { handleVariantAddToCart(); if (matchedVariant) router.push('/cart'); }}>
                 Buy Now
               </Button>
             </>
