@@ -119,11 +119,8 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
   const matchedVariant = useMemo(() => {
     if (!isVariantBased || !product.variants) return null;
 
-    // Get all user-selectable attributes (Material, Colour, Length, etc.)
-    // Exclude non-selectable metadata like Finish Category
-    const selectableAttrNames = Object.keys(variantAttributeOptions).filter(
-      (name) => name !== 'Finish Category'
-    );
+    // Get all user-selectable attributes (Material, Colour, Length, Finish Category when used as material selector)
+    const selectableAttrNames = Object.keys(variantAttributeOptions);
     const allSelected = selectableAttrNames.every((name) => selectedAttributes[name]);
     if (!allSelected) return null;
 
@@ -381,25 +378,28 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
       return (orderA === -1 ? 99 : orderA) - (orderB === -1 ? 99 : orderB);
     });
 
-    // Get selected material for colour filtering
-    const selectedMaterial = selectedAttributes['Material'] || '';
-    const hasMaterialVariation = variantAttributeOptions['Material'] && variantAttributeOptions['Material'].values.size > 1;
+    // Determine the "material" key — could be 'Material' or 'Finish Category' in variant attributes
+    const materialAttrKey = variantAttributeOptions['Material']?.values.size > 1
+      ? 'Material'
+      : variantAttributeOptions['Finish Category']?.values.size > 1
+        ? 'Finish Category'
+        : '';
+    const selectedMaterial = materialAttrKey ? (selectedAttributes[materialAttrKey] || '') : '';
+    const hasMaterialVariation = !!materialAttrKey;
 
     // Filter material colours to ONLY those that exist in actual variant data
     const materialColours = useMemo(() => {
-      if (!selectedMaterial) return [];
+      if (!selectedMaterial || !materialAttrKey) return [];
       const displayColours = MATERIAL_COLOURS[selectedMaterial] || [];
-      // Get actual colour values from variants that have this material
+      // Get actual colour values from variants that have this material/finish
       const actualColours = new Set<string>();
       for (const v of product.variants || []) {
-        const hasMat = v.attributes.some((a) => a.attributeName === 'Material' && a.value === selectedMaterial);
+        const hasMat = v.attributes.some((a) => a.attributeName === materialAttrKey && a.value === selectedMaterial);
         if (hasMat) {
           const col = v.attributes.find((a) => a.attributeName === 'Colour');
           if (col) actualColours.add(col.value);
         }
       }
-      // Only show colours from the display list that actually exist in variants
-      // If no exact match in MATERIAL_COLOURS, also include any actual colours not in the display list
       const filtered = displayColours.filter((c) => actualColours.has(c.name));
       // Add any actual variant colours missing from MATERIAL_COLOURS (with default hex)
       for (const colName of Array.from(actualColours)) {
@@ -410,13 +410,12 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
         }
       }
       return filtered;
-    }, [selectedMaterial, product.variants]);
+    }, [selectedMaterial, materialAttrKey, product.variants]);
 
-    // For products without Material variation (screws, rivets), build colour list from variants
+    // For products without Material/Finish Category variation, build colour list from variants
     const standaloneColours = useMemo(() => {
       if (hasMaterialVariation || !variantAttributeOptions['Colour']) return [];
       const colourValues = Array.from(variantAttributeOptions['Colour'].values);
-      // Try to find hex codes from all material colour lists
       const allKnownColours = Object.values(MATERIAL_COLOURS).flat();
       return colourValues.map((name) => {
         const known = allKnownColours.find((c) => c.name.toLowerCase() === name.toLowerCase());
@@ -443,20 +442,9 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isVariantBased]);
 
-    // When material changes, auto-set the Colour variant attribute and reset dimensions
+    // When material/finish changes, reset colour and dimensions so user must pick again
     const handleMaterialSelect = (material: string) => {
-      // Find colour values directly from variants with this material (avoids stale-state bug)
-      const colourValuesForMaterial = new Set<string>();
-      for (const v of product.variants || []) {
-        const hasMat = v.attributes.some((a) => a.attributeName === 'Material' && a.value === material);
-        if (hasMat) {
-          const col = v.attributes.find((a) => a.attributeName === 'Colour');
-          if (col) colourValuesForMaterial.add(col.value);
-        }
-      }
-      // Reset to only Material — clear colour and dimensions so user must pick colour
-      const newAttrs: Record<string, string> = { Material: material };
-
+      const newAttrs: Record<string, string> = { [materialAttrKey]: material };
       setSelectedAttributes(newAttrs);
       setSelectedColour('');
     };
@@ -485,62 +473,79 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
       }
 
       const isRoofSheet = !!(product.category?.slug === 'roof-sheets' || product.category?.name?.toLowerCase().includes('roof sheet'));
-      const isPerMetre = !!(isRoofSheet || product.pricingModel === 'per_metre');
       const hasLengthAttr = 'Length' in variantAttributeOptions;
-      const userLen = parseFloat(selectedAttributes['_userLength'] || '') || 0;
+      const isPerMetre = !!(isRoofSheet || product.pricingModel === 'per_metre');
       const unitPriceVal = matchedVariant.priceOverride!;
 
-      if (hasLengthAttr && userLen < 0.4) {
-        toast.error('Please enter length (min 0.4m, max 13m)');
-        return;
-      }
+      if (isPerMetre && hasLengthAttr) {
+        const userLen = parseFloat(selectedAttributes['_userLength'] || '') || 0;
+        if (userLen < 0.4) {
+          toast.error('Please enter length (min 0.4m, max 13m)');
+          return;
+        }
 
-      // Use nearest available variant length
-      const matchedLenAttr = matchedVariant.attributes.find((a) => a.attributeName === 'Length');
-      const matchedLenCode = matchedLenAttr?.value || '';
-      const variantLenMetres = matchedLenCode ? (() => {
-        const raw = parseFloat(matchedLenCode);
-        const mm = raw > 100 ? raw : raw * 100;
-        return mm / 1000;
-      })() : userLen;
+        // Use nearest available variant length
+        const matchedLenAttr = matchedVariant.attributes.find((a) => a.attributeName === 'Length');
+        const matchedLenCode = matchedLenAttr?.value || '';
+        const variantLenMetres = matchedLenCode ? (() => {
+          const raw = parseFloat(matchedLenCode);
+          const mm = raw > 100 ? raw : raw * 100;
+          return mm / 1000;
+        })() : userLen;
 
-      if (hasLengthAttr && variantLenMetres > 0) {
         attrEntries.push({ attributeName: 'Length', value: `${variantLenMetres}m` });
+
+        const lineTotal = unitPriceVal * variantLenMetres * quantity;
+
+        addItem({
+          _id: '',
+          product: {
+            _id: product._id, name: product.name, slug: product.slug,
+            sku: matchedVariant.sku,
+            images: product.images.map((i) => ({ url: i.url, alt: i.alt })),
+          },
+          selectedAttributes: attrEntries.filter(a => !a.attributeName.startsWith('_')),
+          pricingModel: 'per_metre',
+          unitPrice: unitPriceVal,
+          length: variantLenMetres,
+          quantity,
+          lineTotal,
+        });
+      } else {
+        // Per-piece products (rainheads, sumps, etc.) — Length is just another mm dimension
+        const lineTotal = unitPriceVal * quantity;
+
+        addItem({
+          _id: '',
+          product: {
+            _id: product._id, name: product.name, slug: product.slug,
+            sku: matchedVariant.sku,
+            images: product.images.map((i) => ({ url: i.url, alt: i.alt })),
+          },
+          selectedAttributes: attrEntries.filter(a => !a.attributeName.startsWith('_')),
+          pricingModel: 'per_piece',
+          unitPrice: unitPriceVal,
+          length: undefined,
+          quantity,
+          lineTotal,
+        });
       }
-
-      // Per-metre: price × length; per-piece: price is for the sheet
-      const lineTotal = isPerMetre ? unitPriceVal * variantLenMetres * quantity : unitPriceVal * quantity;
-
-      addItem({
-        _id: '',
-        product: {
-          _id: product._id, name: product.name, slug: product.slug,
-          sku: matchedVariant.sku,
-          images: product.images.map((i) => ({ url: i.url, alt: i.alt })),
-        },
-        selectedAttributes: attrEntries.filter(a => !a.attributeName.startsWith('_')),
-        pricingModel: isPerMetre ? 'per_metre' : 'per_piece',
-        unitPrice: unitPriceVal,
-        length: hasLengthAttr ? variantLenMetres : undefined,
-        quantity,
-        lineTotal,
-      });
       toast.success('Added to cart');
     };
 
     return (
       <div className="space-y-5">
-        {/* 1. MATERIAL selector */}
-        {variantAttributeOptions['Material'] && variantAttributeOptions['Material'].values.size > 1 && (
+        {/* 1. MATERIAL / FINISH CATEGORY selector */}
+        {hasMaterialVariation && (
           <div>
             <label className="mb-2 block text-sm font-semibold text-steel-700">
-              Material <span className="text-red-500">*</span>
+              Material
               {selectedMaterial && (
                 <span className="ml-2 font-normal text-steel-500">— {selectedMaterial}</span>
               )}
             </label>
             <div className="flex flex-wrap gap-2">
-              {Array.from(variantAttributeOptions['Material'].values).map((mat) => (
+              {Array.from(variantAttributeOptions[materialAttrKey].values).map((mat) => (
                 <button
                   key={mat}
                   onClick={() => handleMaterialSelect(mat)}
@@ -558,11 +563,11 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
           </div>
         )}
 
-        {/* 2a. COLOUR selector — standalone for products without Material variation */}
+        {/* 2a. COLOUR selector — standalone for products without Material/Finish Category variation */}
         {!hasMaterialVariation && standaloneColours.length > 1 && (
           <div>
             <label className="mb-2 block text-sm font-semibold text-steel-700">
-              Colour <span className="text-red-500">*</span>
+              Colour
               {selectedAttributes['Colour'] && (
                 <span className="ml-2 font-normal text-steel-500">— {selectedAttributes['Colour']}</span>
               )}
@@ -596,8 +601,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
         {selectedMaterial && materialColours.length > 0 && (
           <div>
             <label className="mb-2 block text-sm font-semibold text-steel-700">
-              Colour <span className="text-red-500">*</span>
-              {selectedColour && (
+              Colour              {selectedColour && (
                 <span className="ml-2 font-normal text-steel-500">— {selectedColour}</span>
               )}
               <span className="ml-2 font-normal text-steel-400 text-xs">({materialColours.length} colours)</span>
@@ -643,8 +647,17 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
 
           const isDim = isDimensionAttr(attrName);
 
-          // Length attribute — free input in metres, show approx matched value
-          if (attrName === 'Length') {
+          // Length attribute — free input in metres for sheet products (roof sheets, polycarbonate, etc.)
+          // Detect by: explicit per_metre pricing, roof-sheet category, or Length values > 1000 (i.e. stored in mm representing metres)
+          const lengthValsNumeric = attrName === 'Length' ? availableValues.map((v) => parseFloat(v)).filter(Boolean) : [];
+          const hasLargeLength = lengthValsNumeric.length > 0 && Math.min(...lengthValsNumeric) > 1000;
+          const isLengthInMetres = attrName === 'Length' && (
+            product.pricingModel === 'per_metre' ||
+            product.category?.slug === 'roof-sheets' ||
+            product.category?.name?.toLowerCase().includes('roof sheet') ||
+            hasLargeLength
+          );
+          if (isLengthInMetres) {
             // Convert stored values to metres for quick buttons
             const metreValues = availableValues.map((v) => {
               const raw = parseFloat(v);
@@ -669,8 +682,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
             return (
               <div key={attrName}>
                 <label className="mb-2 block text-sm font-semibold text-steel-700">
-                  Length (metres) <span className="text-red-500">*</span>
-                  {userTyped && (
+                  Length (metres)                  {userTyped && (
                     <span className="ml-2 font-normal text-steel-500">— {userTyped}m</span>
                   )}
                 </label>
@@ -727,8 +739,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
             return (
               <div key={attrName}>
                 <label className="mb-2 block text-sm font-semibold text-steel-700">
-                  {attrName} (mm) <span className="text-red-500">*</span>
-                  {displayMm && !isInvalid && (
+                  {attrName} (mm)                  {displayMm && !isInvalid && (
                     <span className="ml-2 font-normal text-steel-500">— {displayMm}mm</span>
                   )}
                 </label>
@@ -782,8 +793,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
           return (
             <div key={attrName}>
               <label className="mb-2 block text-sm font-semibold text-steel-700">
-                {attrName} <span className="text-red-500">*</span>
-                {selectedVal && (
+                {attrName}                {selectedVal && (
                   <span className="ml-2 font-normal text-steel-500">— {selectedVal}</span>
                 )}
               </label>
@@ -815,8 +825,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
           return (
             <div>
               <label className="mb-1.5 block text-sm font-semibold text-steel-700">
-                Length (metres) <span className="text-red-500">*</span>
-              </label>
+                Length (metres)              </label>
               <input
                 type="number"
                 step="0.1"
@@ -872,24 +881,36 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm text-green-600">
                     <Check className="h-4 w-4" />
-                    <span className="font-medium">SKU: {userLen > 0 && matchedLenMetres > 0 && Math.abs(userLen - matchedLenMetres) > 0.01
+                    <span className="font-medium">SKU: {isPerMetre && userLen > 0 && matchedLenMetres > 0 && Math.abs(userLen - matchedLenMetres) > 0.01
                       ? matchedVariant.sku.replace(String(matchedLenMetres), String(userLen))
                       : matchedVariant.sku}</span>
                   </div>
 
 
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-sm text-steel-600">{isPerMetre ? 'Unit price (per metre):' : ` per ${userLen > 0 ? userLen + 'm' : 'each'} length:`}</span>
-                    <span className="text-lg font-bold text-steel-900">
-                      {formatCurrency(pricePerUnit)}{isPerMetre ? '/m' : ''}
-                    </span>
-                  </div>
-
-                  {isPerMetre && (matchedLenMetres || userLen) > 0 && (
+                  {isPerMetre ? (
+                    <>
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-sm text-steel-600">Rate per metre:</span>
+                        <span className="text-sm font-medium text-steel-700">
+                          {formatCurrency(pricePerUnit)}/m
+                        </span>
+                      </div>
+                      {(userLen || matchedLenMetres || length) ? (
+                        <div className="flex items-baseline justify-between">
+                          <span className="text-sm text-steel-600">{formatCurrency(pricePerUnit)} × {userLen || matchedLenMetres || length}m:</span>
+                          <span className="text-lg font-bold text-steel-900">
+                            {formatCurrency(linePrice)}
+                          </span>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
                     <div className="flex items-baseline justify-between">
-                      <span className="text-sm text-steel-600">{formatCurrency(pricePerUnit)} × {matchedLenMetres || userLen}m:</span>
-                      <span className="font-medium text-steel-700">
-                        {formatCurrency(linePrice)}
+                      <span className="text-sm text-steel-600">
+                        {(userLen || matchedLenMetres) > 0 ? `Per ${userLen || matchedLenMetres}m sheet:` : 'Unit price:'}
+                      </span>
+                      <span className="text-lg font-bold text-steel-900">
+                        {formatCurrency(pricePerUnit)}
                       </span>
                     </div>
                   )}
@@ -956,7 +977,6 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
               <div key={attr._id}>
                 <label className="mb-2 block text-sm font-medium text-steel-700">
                   {attr.name}
-                  {ca.isRequired && <span className="text-red-500 ml-1">*</span>}
                   {selectedAttributes[attr._id] && (
                     <span className="ml-2 font-normal text-steel-500">
                       — {filteredValues.find((v) => v.value === selectedAttributes[attr._id])?.label}
