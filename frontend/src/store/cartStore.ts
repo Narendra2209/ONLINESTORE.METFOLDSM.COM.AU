@@ -35,9 +35,10 @@ export const useCartStore = create<CartState>()(
 
         if (existingIndex >= 0) {
           const updatedItems = [...items];
-          updatedItems[existingIndex].quantity += item.quantity;
-          updatedItems[existingIndex].lineTotal =
-            updatedItems[existingIndex].unitPrice * updatedItems[existingIndex].quantity;
+          const existing = updatedItems[existingIndex];
+          existing.quantity += item.quantity;
+          const lengthMult = existing.pricingModel === 'per_metre' && existing.length ? existing.length : 1;
+          existing.lineTotal = existing.unitPrice * lengthMult * existing.quantity;
           set({ items: updatedItems });
         } else {
           set({ items: [...items, { ...item, _id: crypto.randomUUID() }] });
@@ -50,11 +51,11 @@ export const useCartStore = create<CartState>()(
 
       updateQuantity: (itemId, quantity) => {
         if (quantity < 1) return;
-        const items = get().items.map((item) =>
-          item._id === itemId
-            ? { ...item, quantity, lineTotal: item.unitPrice * quantity }
-            : item
-        );
+        const items = get().items.map((item) => {
+          if (item._id !== itemId) return item;
+          const lengthMult = item.pricingModel === 'per_metre' && item.length ? item.length : 1;
+          return { ...item, quantity, lineTotal: item.unitPrice * lengthMult * quantity };
+        });
         set({ items });
       },
 

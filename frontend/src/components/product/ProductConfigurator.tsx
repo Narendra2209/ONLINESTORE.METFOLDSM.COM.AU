@@ -10,7 +10,7 @@ import { formatCurrency, cn } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import Input from '@/components/ui/Input';
-import { ShoppingCart, Zap, Loader2, AlertCircle, Check } from 'lucide-react';
+import { ShoppingCart, Zap, Loader2, AlertCircle, Check, Trash2, Minus, Plus, Package } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface ProductConfiguratorProps {
@@ -88,7 +88,8 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
   const [length, setLength] = useState<number | undefined>(undefined);
   const [quantity, setQuantity] = useState(1);
   const [selectedColour, setSelectedColour] = useState<string>('');
-  const { addItem } = useCartStore();
+  const [showCartPopup, setShowCartPopup] = useState(false);
+  const { addItem, items, removeItem, updateQuantity, clearCart } = useCartStore();
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
 
@@ -468,8 +469,9 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
       const attrEntries = matchedVariant.attributes
         .filter((a) => a.attributeName !== 'Colour')
         .map((a) => ({ attributeName: a.attributeName, value: a.value }));
-      if (selectedColour) {
-        attrEntries.push({ attributeName: 'Colour', value: selectedColour });
+      const colourVal = selectedColour || selectedAttributes['Colour'] || '';
+      if (colourVal) {
+        attrEntries.push({ attributeName: 'Colour', value: colourVal });
       }
 
       const isRoofSheet = !!(product.category?.slug === 'roof-sheets' || product.category?.name?.toLowerCase().includes('roof sheet'));
@@ -479,8 +481,8 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
 
       if (isPerMetre && hasLengthAttr) {
         const userLen = parseFloat(selectedAttributes['_userLength'] || '') || 0;
-        if (userLen < 0.4) {
-          toast.error('Please enter length (min 0.4m, max 13m)');
+        if (userLen < 0.4 || userLen > 13) {
+          toast.error('Length must be between 0.4m and 13m');
           return;
         }
 
@@ -493,8 +495,6 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
           return mm / 1000;
         })() : userLen;
 
-        attrEntries.push({ attributeName: 'Length', value: `${variantLenMetres}m` });
-
         const lineTotal = unitPriceVal * variantLenMetres * quantity;
 
         addItem({
@@ -504,15 +504,36 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
             sku: matchedVariant.sku,
             images: product.images.map((i) => ({ url: i.url, alt: i.alt })),
           },
-          selectedAttributes: attrEntries.filter(a => !a.attributeName.startsWith('_')),
+          selectedAttributes: attrEntries.filter(a => !a.attributeName.startsWith('_') && a.attributeName !== 'Length'),
           pricingModel: 'per_metre',
           unitPrice: unitPriceVal,
           length: variantLenMetres,
           quantity,
           lineTotal,
         });
+      } else if (isPerMetre && !hasLengthAttr && length && length >= 0.4 && length <= 13) {
+        // Per-metre roof sheets without Length variant attribute — use separate length input
+        const lineTotal = unitPriceVal * length * quantity;
+
+        addItem({
+          _id: '',
+          product: {
+            _id: product._id, name: product.name, slug: product.slug,
+            sku: matchedVariant.sku,
+            images: product.images.map((i) => ({ url: i.url, alt: i.alt })),
+          },
+          selectedAttributes: attrEntries.filter(a => !a.attributeName.startsWith('_') && a.attributeName !== 'Length'),
+          pricingModel: 'per_metre',
+          unitPrice: unitPriceVal,
+          length,
+          quantity,
+          lineTotal,
+        });
+      } else if (isPerMetre && !hasLengthAttr && (!length || length < 0.4 || length > 13)) {
+        toast.error('Length must be between 0.4m and 13m');
+        return;
       } else {
-        // Per-piece products (rainheads, sumps, etc.) — Length is just another mm dimension
+        // Per-piece products (rainheads, sumps, downpipes, etc.)
         const lineTotal = unitPriceVal * quantity;
 
         addItem({
@@ -530,8 +551,19 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
           lineTotal,
         });
       }
-      toast.success('Added to cart');
+      // Show popup for roofing products, toast for others
+      const isRoof = !!(product.category?.slug === 'roof-sheets' || product.category?.name?.toLowerCase().includes('roof sheet'));
+      const isPoly = !!(product.category?.slug === 'polycarbonate-sheets' || product.category?.name?.toLowerCase().includes('polycarbonate'));
+      if (isRoof || isPoly) {
+        setShowCartPopup(true);
+      } else {
+        toast.success('Added to cart');
+      }
     };
+
+    // Filter cart items for this product only (for roofing popup)
+    const productCartItems = items.filter((i) => i.product._id === product._id);
+    const productCartTotal = productCartItems.reduce((sum, i) => sum + i.lineTotal, 0);
 
     return (
       <div className="space-y-5">
@@ -699,9 +731,10 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
                       setSelectedAttributes((prev) => ({ ...prev, '_userLength': '', [attrName]: '' }));
                       return;
                     }
+                    const parsed = parseFloat(mInput);
+                    if (parsed > 13) return; // Block input beyond 13m
                     const closest = findClosest(mInput);
-                    const lengthCode = closest || String(parseFloat(mInput) * 1000);
-                    // Single functional update to avoid stale closure overwriting _userLength
+                    const lengthCode = closest || String(parsed * 1000);
                     setSelectedAttributes((prev) => ({ ...prev, '_userLength': mInput, [attrName]: lengthCode }));
                   }}
                   className="w-full rounded-lg border-2 border-steel-200 px-4 py-2.5 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
@@ -833,9 +866,10 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
                 max={13}
                 value={length || ''}
                 onChange={(e) => {
-                  const val = parseFloat(e.target.value) || undefined;
+                  const raw = parseFloat(e.target.value);
+                  const val = !isNaN(raw) ? Math.min(raw, 13) : undefined;
                   setLength(val);
-                  setSelectedAttributes((prev) => ({ ...prev, '_userLength': e.target.value }));
+                  setSelectedAttributes((prev) => ({ ...prev, '_userLength': val ? String(val) : '' }));
                 }}
                 placeholder="Min 0.4m — Max 13m"
                 className="w-full max-w-xs rounded-lg border border-steel-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
@@ -958,6 +992,76 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
             </>
           )}
         </div>
+
+        {/* Roofing cart popup — fixed on page, shows items added for this product */}
+        {showCartPopup && productCartItems.length > 0 && (
+          <div className="rounded-xl border-2 border-brand-200 bg-brand-50/50 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-steel-900 flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4 text-brand-600" />
+                Items in Cart ({productCartItems.length})
+              </h3>
+            </div>
+
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {productCartItems.map((item) => (
+                <div key={item._id} className="flex items-center justify-between bg-white rounded-lg border border-steel-100 px-3 py-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap gap-1 text-[11px]">
+                      {item.selectedAttributes
+                        .filter((a) => !a.attributeName.startsWith('Segment '))
+                        .map((attr, i) => (
+                          <span key={i} className="bg-steel-50 text-steel-600 px-1.5 py-0.5 rounded border border-steel-100">
+                            {attr.value}
+                          </span>
+                        ))}
+                      {item.length && (
+                        <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100">
+                          {item.length}m
+                        </span>
+                      )}
+                      <span className="bg-steel-50 text-steel-600 px-1.5 py-0.5 rounded border border-steel-100">
+                        Qty: {item.quantity}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 ml-3">
+                    <span className="text-sm font-bold text-steel-900 whitespace-nowrap">{formatCurrency(item.lineTotal)}</span>
+                    <button
+                      onClick={() => removeItem(item._id)}
+                      className="p-1 text-steel-300 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 flex items-center justify-between border-t border-brand-200 pt-3">
+              <span className="text-sm font-semibold text-steel-700">Total (excl. GST):</span>
+              <span className="text-lg font-bold text-steel-900">{formatCurrency(productCartTotal)}</span>
+            </div>
+
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={() => {
+                  setShowCartPopup(false);
+                  router.push('/cart');
+                }}
+                className="flex-1 py-2.5 rounded-lg bg-brand-600 text-white font-semibold text-sm hover:bg-brand-700 transition-colors"
+              >
+                Place Order
+              </button>
+              <button
+                onClick={() => setShowCartPopup(false)}
+                className="px-4 py-2.5 rounded-lg border border-steel-200 text-steel-600 text-sm font-medium hover:bg-steel-50 transition-colors"
+              >
+                Add More
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
