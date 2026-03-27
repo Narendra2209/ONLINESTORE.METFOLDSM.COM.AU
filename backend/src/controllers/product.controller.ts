@@ -63,7 +63,7 @@ export const skuLookup = catchAsync(async (req: Request, res: Response) => {
           price: product.price,
           pricingModel: product.pricingModel,
           category: product.category,
-          priceRange: product.priceRange,
+          priceRange: (product as any).priceRange,
           type: product.type,
           image: product.images?.[0]?.url || null,
         },
