@@ -88,7 +88,6 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
   const [length, setLength] = useState<number | undefined>(undefined);
   const [quantity, setQuantity] = useState(1);
   const [selectedColour, setSelectedColour] = useState<string>('');
-  const [showCartPopup, setShowCartPopup] = useState(false);
   const { addItem, items, removeItem, updateQuantity, clearCart } = useCartStore();
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
@@ -533,8 +532,19 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
         toast.error('Length must be between 0.4m and 13m');
         return;
       } else {
-        // Per-piece products (rainheads, sumps, downpipes, etc.)
+        // Per-piece products (rainheads, sumps, downpipes, polycarbonate, etc.)
         const lineTotal = unitPriceVal * quantity;
+
+        // For products with large Length values (polycarbonate), show user's custom length in metres
+        const userLen = parseFloat(selectedAttributes['_userLength'] || '') || 0;
+        const cartAttrs = attrEntries
+          .filter(a => !a.attributeName.startsWith('_'))
+          .map(a => {
+            if (a.attributeName === 'Length' && userLen > 0) {
+              return { attributeName: 'Length', value: `${userLen}m` };
+            }
+            return a;
+          });
 
         addItem({
           _id: '',
@@ -543,29 +553,131 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
             sku: matchedVariant.sku,
             images: product.images.map((i) => ({ url: i.url, alt: i.alt })),
           },
-          selectedAttributes: attrEntries.filter(a => !a.attributeName.startsWith('_')),
+          selectedAttributes: cartAttrs,
           pricingModel: 'per_piece',
           unitPrice: unitPriceVal,
-          length: undefined,
+          length: userLen > 0 ? userLen : undefined,
           quantity,
           lineTotal,
         });
       }
-      // Show popup for roofing products, toast for others
-      const isRoof = !!(product.category?.slug === 'roof-sheets' || product.category?.name?.toLowerCase().includes('roof sheet'));
-      const isPoly = !!(product.category?.slug === 'polycarbonate-sheets' || product.category?.name?.toLowerCase().includes('polycarbonate'));
-      if (isRoof || isPoly) {
-        setShowCartPopup(true);
-      } else {
-        toast.success('Added to cart');
-      }
+      toast.success('Added to cart');
+      // Open the side drawer
+      useCartStore.getState().setCartOpen(true);
     };
 
-    // Filter cart items for this product only (for roofing popup)
-    const productCartItems = items.filter((i) => i.product._id === product._id);
-    const productCartTotal = productCartItems.reduce((sum, i) => sum + i.lineTotal, 0);
+    // Show ALL cart items in the sidebar
+    const productCartItems = items;
+    const productCartTotal = items.reduce((sum, i) => sum + i.lineTotal, 0);
+    const hasCartItems = productCartItems.length > 0;
+    const { isOpen: drawerOpen, setCartOpen } = useCartStore();
 
     return (
+      <>
+      {/* Fixed side drawer — below header+nav */}
+      {hasCartItems && (
+        <div className={cn(
+          'fixed right-0 w-80 bg-white border-l border-steel-200 shadow-lg z-40 flex flex-col transition-transform duration-300 ease-in-out',
+          'top-[190px] bottom-0',
+          drawerOpen ? 'translate-x-0' : 'translate-x-full'
+        )}>
+          {/* Arrow toggle — attached to left edge of drawer */}
+          <button
+            onClick={() => setCartOpen(!drawerOpen)}
+            className="absolute -left-8 top-4 w-8 h-12 bg-brand-600 text-white rounded-l-lg shadow-md hover:bg-brand-700 transition-colors flex items-center justify-center"
+          >
+            <svg className={cn('h-5 w-5 transition-transform', drawerOpen ? 'rotate-0' : 'rotate-180')} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+
+          {/* Cart badge on arrow when closed */}
+          {!drawerOpen && (
+            <span className="absolute -left-8 top-[60px] w-8 text-center text-[10px] font-bold text-brand-600 bg-brand-50 border border-brand-200 rounded-l-lg py-1">
+              {productCartItems.length}
+            </span>
+          )}
+
+          <div className="flex items-center justify-between px-4 py-3 border-b border-steel-100 bg-brand-50">
+            <h3 className="text-sm font-bold text-steel-900 flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4 text-brand-600" />
+              Cart ({productCartItems.length} {productCartItems.length === 1 ? 'item' : 'items'})
+            </h3>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+            {productCartItems.map((item) => (
+              <div key={item._id} className="rounded-lg border border-steel-100 bg-white p-2.5">
+                <div className="flex gap-2.5">
+                  {/* Image */}
+                  <div className="h-16 w-16 flex-shrink-0 rounded-md bg-steel-50 border border-steel-100 flex items-center justify-center overflow-hidden">
+                    {item.product.images?.[0]?.url ? (
+                      <img src={item.product.images[0].url} alt={item.product.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <Package className="h-5 w-5 text-steel-300" />
+                    )}
+                  </div>
+                  {/* Everything beside image */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-steel-900 truncate">{item.product.name}</p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {item.selectedAttributes.filter((a) => !a.attributeName.startsWith('Segment ') && a.attributeName !== 'Length').map((attr, i) => (
+                        <span key={i} className="text-[10px] bg-steel-50 text-steel-600 px-1.5 py-0.5 rounded border border-steel-100">
+                          {attr.attributeName}: {attr.value}
+                        </span>
+                      ))}
+                      {item.length && (
+                        <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100">
+                          Length: {item.length}m
+                        </span>
+                      )}
+                    </div>
+                    {/* Quantity + Price */}
+                    <div className="mt-1.5 flex items-center justify-between">
+                      <div className="flex items-center rounded border border-steel-200">
+                        <button
+                          onClick={() => updateQuantity(item._id, item.quantity - 1)}
+                          disabled={item.quantity <= 1}
+                          className="px-1.5 py-0.5 text-steel-400 hover:text-steel-600 disabled:opacity-30"
+                        >
+                          <Minus className="h-2.5 w-2.5" />
+                        </button>
+                        <span className="w-6 text-center text-[11px] font-medium border-x border-steel-200">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item._id, item.quantity + 1)}
+                          className="px-1.5 py-0.5 text-steel-400 hover:text-steel-600"
+                        >
+                          <Plus className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-steel-900">{formatCurrency(item.lineTotal)}</span>
+                        <button onClick={() => removeItem(item._id)} className="p-1 text-steel-300 hover:text-red-500 transition-colors">
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-steel-200 px-4 py-3 bg-white">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-steel-700">Total (excl. GST):</span>
+              <span className="text-lg font-bold text-steel-900">{formatCurrency(productCartTotal)}</span>
+            </div>
+            <button
+              onClick={() => { setCartOpen(false); router.push('/cart'); }}
+              className="w-full py-2.5 rounded-lg bg-brand-600 text-white font-semibold text-sm hover:bg-brand-700 transition-colors"
+            >
+              Place Order
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-5">
         {/* 1. MATERIAL / FINISH CATEGORY selector */}
         {hasMaterialVariation && (
@@ -700,15 +812,19 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
             // User's typed value (stored as custom key)
             const userTyped = selectedAttributes['_userLength'] || '';
 
-            // Find the closest available value to what user typed
+            // Find the nearest HIGHER or equal available length (round up)
             const findClosest = (mInput: string) => {
               if (availableValues.length === 0) return '';
               const mmVal = parseFloat(mInput) * 1000;
-              return availableValues.reduce((prev, curr) => {
-                const prevMm = parseFloat(prev) > 100 ? parseFloat(prev) : parseFloat(prev) * 100;
-                const currMm = parseFloat(curr) > 100 ? parseFloat(curr) : parseFloat(curr) * 100;
-                return Math.abs(currMm - mmVal) < Math.abs(prevMm - mmVal) ? curr : prev;
-              });
+              // Sort values in mm ascending
+              const sorted = availableValues
+                .map((v) => ({ code: v, mm: parseFloat(v) > 100 ? parseFloat(v) : parseFloat(v) * 100 }))
+                .sort((a, b) => a.mm - b.mm);
+              // Find first value >= user input
+              const higher = sorted.find((v) => v.mm >= mmVal - 1);
+              if (higher) return higher.code;
+              // If none higher, use the largest available
+              return sorted[sorted.length - 1].code;
             };
 
             return (
@@ -993,76 +1109,8 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
           )}
         </div>
 
-        {/* Roofing cart popup — fixed on page, shows items added for this product */}
-        {showCartPopup && productCartItems.length > 0 && (
-          <div className="rounded-xl border-2 border-brand-200 bg-brand-50/50 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-steel-900 flex items-center gap-2">
-                <ShoppingCart className="h-4 w-4 text-brand-600" />
-                Items in Cart ({productCartItems.length})
-              </h3>
-            </div>
-
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {productCartItems.map((item) => (
-                <div key={item._id} className="flex items-center justify-between bg-white rounded-lg border border-steel-100 px-3 py-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap gap-1 text-[11px]">
-                      {item.selectedAttributes
-                        .filter((a) => !a.attributeName.startsWith('Segment '))
-                        .map((attr, i) => (
-                          <span key={i} className="bg-steel-50 text-steel-600 px-1.5 py-0.5 rounded border border-steel-100">
-                            {attr.value}
-                          </span>
-                        ))}
-                      {item.length && (
-                        <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100">
-                          {item.length}m
-                        </span>
-                      )}
-                      <span className="bg-steel-50 text-steel-600 px-1.5 py-0.5 rounded border border-steel-100">
-                        Qty: {item.quantity}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 ml-3">
-                    <span className="text-sm font-bold text-steel-900 whitespace-nowrap">{formatCurrency(item.lineTotal)}</span>
-                    <button
-                      onClick={() => removeItem(item._id)}
-                      className="p-1 text-steel-300 hover:text-red-500 transition-colors"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-3 flex items-center justify-between border-t border-brand-200 pt-3">
-              <span className="text-sm font-semibold text-steel-700">Total (excl. GST):</span>
-              <span className="text-lg font-bold text-steel-900">{formatCurrency(productCartTotal)}</span>
-            </div>
-
-            <div className="mt-3 flex gap-2">
-              <button
-                onClick={() => {
-                  setShowCartPopup(false);
-                  router.push('/cart');
-                }}
-                className="flex-1 py-2.5 rounded-lg bg-brand-600 text-white font-semibold text-sm hover:bg-brand-700 transition-colors"
-              >
-                Place Order
-              </button>
-              <button
-                onClick={() => setShowCartPopup(false)}
-                className="px-4 py-2.5 rounded-lg border border-steel-200 text-steel-600 text-sm font-medium hover:bg-steel-50 transition-colors"
-              >
-                Add More
-              </button>
-            </div>
-          </div>
-        )}
       </div>
+      </>
     );
   }
 
