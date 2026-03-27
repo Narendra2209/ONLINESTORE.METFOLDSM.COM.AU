@@ -141,8 +141,8 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
   const getAvailableValues = (attrName: string): string[] => {
     if (!product.variants) return [];
 
-    // Get all other selected attributes (not the current one)
-    const otherSelections = Object.entries(selectedAttributes).filter(([k]) => k !== attrName);
+    // Get all other selected attributes (not the current one, exclude internal keys like _userLength)
+    const otherSelections = Object.entries(selectedAttributes).filter(([k]) => k !== attrName && !k.startsWith('_'));
 
     // Filter variants that match the other selections
     const matchingVariants = product.variants.filter((v) =>
@@ -485,17 +485,31 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
       }
 
       const isRoofSheet = !!(product.category?.slug === 'roof-sheets' || product.category?.name?.toLowerCase().includes('roof sheet'));
-      const effectiveLength = isRoofSheet ? (length || 0) : 1;
+      const isPerMetre = !!(isRoofSheet || product.pricingModel === 'per_metre');
+      const hasLengthAttr = 'Length' in variantAttributeOptions;
+      const userLen = parseFloat(selectedAttributes['_userLength'] || '') || 0;
       const unitPriceVal = matchedVariant.priceOverride!;
 
-      if (isRoofSheet && (!length || length < 0.4)) {
+      if (hasLengthAttr && userLen < 0.4) {
         toast.error('Please enter length (min 0.4m, max 13m)');
         return;
       }
 
-      if (isRoofSheet && length) {
-        attrEntries.push({ attributeName: 'Length', value: `${length}m` });
+      // Use nearest available variant length
+      const matchedLenAttr = matchedVariant.attributes.find((a) => a.attributeName === 'Length');
+      const matchedLenCode = matchedLenAttr?.value || '';
+      const variantLenMetres = matchedLenCode ? (() => {
+        const raw = parseFloat(matchedLenCode);
+        const mm = raw > 100 ? raw : raw * 100;
+        return mm / 1000;
+      })() : userLen;
+
+      if (hasLengthAttr && variantLenMetres > 0) {
+        attrEntries.push({ attributeName: 'Length', value: `${variantLenMetres}m` });
       }
+
+      // Per-metre: price × length; per-piece: price is for the sheet
+      const lineTotal = isPerMetre ? unitPriceVal * variantLenMetres * quantity : unitPriceVal * quantity;
 
       addItem({
         _id: '',
@@ -504,12 +518,12 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
           sku: matchedVariant.sku,
           images: product.images.map((i) => ({ url: i.url, alt: i.alt })),
         },
-        selectedAttributes: attrEntries,
-        pricingModel: isRoofSheet ? 'per_metre' : 'per_piece',
+        selectedAttributes: attrEntries.filter(a => !a.attributeName.startsWith('_')),
+        pricingModel: isPerMetre ? 'per_metre' : 'per_piece',
         unitPrice: unitPriceVal,
-        length: isRoofSheet ? length : undefined,
+        length: hasLengthAttr ? variantLenMetres : undefined,
         quantity,
-        lineTotal: unitPriceVal * effectiveLength * quantity,
+        lineTotal,
       });
       toast.success('Added to cart');
     };
@@ -619,9 +633,6 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
           if (attrName === 'Material') return null;
           if (attrName === 'Colour') return null;
           if (attrName === 'Finish Category') return null;
-          // Skip Length for roof sheets — handled by separate length input
-          const _isRoof = !!(product.category?.slug === 'roof-sheets' || product.category?.name?.toLowerCase().includes('roof'));
-          if (_isRoof && attrName === 'Length') return null;
 
           const availableValues = getAvailableValues(attrName);
           const selectedVal = selectedAttributes[attrName] || '';
@@ -655,13 +666,6 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
               });
             };
 
-            const closestCode = userTyped ? findClosest(userTyped) : selectedVal;
-            const closestMetres = closestCode ? (() => {
-              const raw = parseFloat(closestCode);
-              const mm = raw > 100 ? raw : raw * 100;
-              return (mm / 1000).toFixed(1);
-            })() : '';
-
             return (
               <div key={attrName}>
                 <label className="mb-2 block text-sm font-semibold text-steel-700">
@@ -679,26 +683,24 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
                   placeholder="Enter any length (0.4m – 13m)"
                   onChange={(e) => {
                     const mInput = e.target.value;
-                    setSelectedAttributes((prev) => ({ ...prev, '_userLength': mInput }));
-                    if (!mInput) { handleAttributeChange(attrName, ''); return; }
+                    if (!mInput) {
+                      setSelectedAttributes((prev) => ({ ...prev, '_userLength': '', [attrName]: '' }));
+                      return;
+                    }
                     const closest = findClosest(mInput);
-                    // Use closest if available, otherwise store the raw mm value
-                    handleAttributeChange(attrName, closest || String(parseFloat(mInput) * 1000));
+                    const lengthCode = closest || String(parseFloat(mInput) * 1000);
+                    // Single functional update to avoid stale closure overwriting _userLength
+                    setSelectedAttributes((prev) => ({ ...prev, '_userLength': mInput, [attrName]: lengthCode }));
                   }}
                   className="w-full rounded-lg border-2 border-steel-200 px-4 py-2.5 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 />
-                {userTyped && closestMetres && userTyped !== closestMetres && (
-                  <p className="mt-1 text-xs text-amber-600">
-                    ≈ Priced at nearest available: <span className="font-bold">{closestMetres}m</span>
-                  </p>
-                )}
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {metreValues.map(({ code, metres }) => (
                     <button
                       key={code}
                       onClick={() => {
-                        handleAttributeChange(attrName, code);
-                        setSelectedAttributes((prev) => ({ ...prev, '_userLength': metres }));
+                        // Single functional update to keep _userLength and Length in sync
+                        setSelectedAttributes((prev) => ({ ...prev, [attrName]: code, '_userLength': metres }));
                       }}
                       className={cn(
                         'px-3 py-1.5 rounded-md text-xs font-medium border transition-all',
@@ -821,7 +823,11 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
                 min={0.4}
                 max={13}
                 value={length || ''}
-                onChange={(e) => setLength(parseFloat(e.target.value) || undefined)}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value) || undefined;
+                  setLength(val);
+                  setSelectedAttributes((prev) => ({ ...prev, '_userLength': e.target.value }));
+                }}
                 placeholder="Min 0.4m — Max 13m"
                 className="w-full max-w-xs rounded-lg border border-steel-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
               />
@@ -843,64 +849,78 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
         {/* Price display */}
         {(() => {
           const isRoofSheet = !!(product.category?.slug === 'roof-sheets' || product.category?.name?.toLowerCase().includes('roof sheet'));
-          const needsLen = !!(isRoofSheet || product.pricingModel === 'per_metre');
+          const isPerMetre = !!(isRoofSheet || product.pricingModel === 'per_metre');
           const pricePerUnit = matchedVariant?.priceOverride || 0;
-          const effectiveLength = needsLen ? (length || 0) : 1;
-          const linePrice = pricePerUnit * effectiveLength;
+          const userLen = parseFloat(selectedAttributes['_userLength'] || '') || 0;
+
+          // Determine matched variant's length in metres
+          const matchedLenAttr = matchedVariant?.attributes.find((a: any) => a.attributeName === 'Length');
+          const matchedLenCode = matchedLenAttr?.value || '';
+          const matchedLenMetres = matchedLenCode ? (() => {
+            const raw = parseFloat(matchedLenCode);
+            const mm = raw > 100 ? raw : raw * 100;
+            return (mm / 1000);
+          })() : 0;
+
+          // Per-metre products: price × length; per-piece products: price is for the sheet
+          const linePrice = isPerMetre ? pricePerUnit * (matchedLenMetres || userLen || (length || 0)) : pricePerUnit;
           const totalPrice = linePrice * quantity;
 
           return (
-        <div className="rounded-xl bg-steel-50 p-5 border border-steel-100">
-          {matchedVariant ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm text-green-600">
-                <Check className="h-4 w-4" />
-                <span className="font-medium">SKU: {matchedVariant.sku}</span>
-              </div>
+            <div className="rounded-xl bg-steel-50 p-5 border border-steel-100">
+              {matchedVariant ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-green-600">
+                    <Check className="h-4 w-4" />
+                    <span className="font-medium">SKU: {userLen > 0 && matchedLenMetres > 0 && Math.abs(userLen - matchedLenMetres) > 0.01
+                      ? matchedVariant.sku.replace(String(matchedLenMetres), String(userLen))
+                      : matchedVariant.sku}</span>
+                  </div>
 
-              <div className="flex items-baseline justify-between">
-                <span className="text-sm text-steel-600">{needsLen ? 'Price per metre:' : 'Unit price:'}</span>
-                <span className="text-lg font-bold text-steel-900">
-                  {formatCurrency(pricePerUnit)}{needsLen ? '/m' : ''}
-                </span>
-              </div>
 
-              {needsLen && length && length > 0 && (
-                <div className="flex items-baseline justify-between">
-                  <span className="text-sm text-steel-600">{formatCurrency(pricePerUnit)} × {length}m:</span>
-                  <span className="font-medium text-steel-700">
-                    {formatCurrency(linePrice)}
-                  </span>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm text-steel-600">{isPerMetre ? 'Unit price (per metre):' : ` per ${userLen > 0 ? userLen + 'm' : 'each'} length:`}</span>
+                    <span className="text-lg font-bold text-steel-900">
+                      {formatCurrency(pricePerUnit)}{isPerMetre ? '/m' : ''}
+                    </span>
+                  </div>
+
+                  {isPerMetre && (matchedLenMetres || userLen) > 0 && (
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-sm text-steel-600">{formatCurrency(pricePerUnit)} × {matchedLenMetres || userLen}m:</span>
+                      <span className="font-medium text-steel-700">
+                        {formatCurrency(linePrice)}
+                      </span>
+                    </div>
+                  )}
+
+                  {quantity > 1 && (
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-sm text-steel-600">Qty × {quantity}:</span>
+                      <span className="font-medium text-steel-700">
+                        {formatCurrency(totalPrice)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="border-t border-steel-200 pt-3">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-base font-semibold text-steel-900">Total:</span>
+                      <span className="text-2xl font-bold text-steel-900">
+                        {formatCurrency(totalPrice)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-steel-500 text-right mt-0.5">Excl. GST</p>
+                  </div>
                 </div>
+              ) : (
+                <p className="text-sm text-steel-500 text-center py-2">
+                  {selectedMaterial
+                    ? 'Select all dimensions to see the price'
+                    : 'Select material and dimensions to see pricing'}
+                </p>
               )}
-
-              {quantity > 1 && (
-                <div className="flex items-baseline justify-between">
-                  <span className="text-sm text-steel-600">Qty × {quantity}:</span>
-                  <span className="font-medium text-steel-700">
-                    {formatCurrency(totalPrice)}
-                  </span>
-                </div>
-              )}
-
-              <div className="border-t border-steel-200 pt-3">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-base font-semibold text-steel-900">Total:</span>
-                  <span className="text-2xl font-bold text-steel-900">
-                    {needsLen && (!length || length <= 0) ? '$0.00' : formatCurrency(totalPrice)}
-                  </span>
-                </div>
-                <p className="text-xs text-steel-500 text-right mt-0.5">Excl. GST</p>
-              </div>
             </div>
-          ) : (
-            <p className="text-sm text-steel-500 text-center py-2">
-              {selectedMaterial
-                ? 'Select all dimensions to see the price'
-                : 'Select material and dimensions to see pricing'}
-            </p>
-          )}
-        </div>
           );
         })()}
 

@@ -37,6 +37,81 @@ export const getFlashingPrice = catchAsync(async (req: Request, res: Response) =
   }
 });
 
+export const skuLookup = catchAsync(async (req: Request, res: Response) => {
+  const { sku } = req.query;
+  if (!sku || typeof sku !== 'string') throw ApiError.badRequest('SKU is required');
+
+  const searchSku = sku.trim().toUpperCase();
+
+  // Search in products by exact or partial SKU match
+  const product = await Product.findOne({
+    sku: { $regex: new RegExp(`^${searchSku.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i') },
+    status: 'active',
+  })
+    .populate('category', 'name slug')
+    .select('name sku price pricingModel category images priceRange type')
+    .lean();
+
+  if (product) {
+    ApiResponse.success({
+      res,
+      data: {
+        found: true,
+        product: {
+          name: product.name,
+          sku: product.sku,
+          price: product.price,
+          pricingModel: product.pricingModel,
+          category: product.category,
+          priceRange: product.priceRange,
+          type: product.type,
+          image: product.images?.[0]?.url || null,
+        },
+      },
+    });
+    return;
+  }
+
+  // Search in product variants by SKU
+  const ProductVariant = (await import('../models/ProductVariant')).default;
+  const variant = await ProductVariant.findOne({
+    sku: { $regex: new RegExp(`^${searchSku.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i') },
+    isActive: true,
+  })
+    .populate({
+      path: 'product',
+      select: 'name sku price pricingModel category images status',
+      populate: { path: 'category', select: 'name slug' },
+    })
+    .lean();
+
+  if (variant && variant.product && (variant.product as any).status === 'active') {
+    const parentProduct = variant.product as any;
+    ApiResponse.success({
+      res,
+      data: {
+        found: true,
+        product: {
+          name: parentProduct.name,
+          sku: variant.sku,
+          price: variant.priceOverride ?? parentProduct.price,
+          pricingModel: parentProduct.pricingModel,
+          category: parentProduct.category,
+          type: 'variant',
+          image: parentProduct.images?.[0]?.url || null,
+          attributes: variant.attributes,
+        },
+      },
+    });
+    return;
+  }
+
+  ApiResponse.success({
+    res,
+    data: { found: false, message: `No product found for SKU "${sku}"` },
+  });
+});
+
 export const listProducts = catchAsync(async (req: Request, res: Response) => {
   const result = await productService.list(req.query as any);
   ApiResponse.paginated(res, result.products, result.total, result.page, result.limit);

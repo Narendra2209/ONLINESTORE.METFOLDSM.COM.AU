@@ -43,4 +43,9 @@ export const productApi = {
     const { data } = await api.get<ApiResponse<Attribute[]>>('/products/attributes/filterable');
     return data.data;
   },
+
+  async skuLookup(sku: string) {
+    const { data } = await api.get<ApiResponse<any>>(`/products/sku-lookup?sku=${encodeURIComponent(sku)}`);
+    return data.data;
+  },
 };

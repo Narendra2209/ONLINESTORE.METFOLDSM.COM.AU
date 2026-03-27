@@ -4,6 +4,7 @@ import '@/styles/globals.css';
 import { Toaster } from 'react-hot-toast';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import PriceBot from '@/components/common/PriceBot';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -42,6 +43,7 @@ export default function RootLayout({
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
+        <PriceBot />
         <Toaster
           position="top-right"
           toastOptions={{

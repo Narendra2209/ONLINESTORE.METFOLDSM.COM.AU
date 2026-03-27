@@ -28,6 +28,7 @@ const router = Router();
 
 // Public routes
 router.get('/flashing-price', productController.getFlashingPrice);
+router.get('/sku-lookup', productController.skuLookup);
 router.get('/', productController.listProducts);
 router.get('/attributes/filterable', productController.getFilterableAttributes);
 router.get('/:slug', productController.getProductBySlug);
