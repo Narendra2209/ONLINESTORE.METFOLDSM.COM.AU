@@ -8,7 +8,7 @@ import { useAuthStore } from '@/store/authStore';
 import { formatCurrency } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import Breadcrumb from '@/components/ui/Breadcrumb';
-import { Trash2, ShoppingBag, ArrowRight, Minus, Plus, Package, ShieldCheck, Truck, Download, MapPin } from 'lucide-react';
+import { Trash2, ShoppingBag, ArrowRight, Minus, Plus, Package, ShieldCheck, Truck, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 
@@ -58,7 +58,7 @@ export default function CartPage() {
     const margin = 8;
     const contentWidth = pageWidth - margin * 2;
     let y = margin;
-    const orderNum = `P-QT${String(Date.now()).slice(-6)}`;
+    const orderNum = `M4Tfold-${String(Date.now()).slice(-4)}`;
     const dateStr = new Date().toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const getAttr = (item: typeof items[0], name: string) =>
       item.selectedAttributes.find((a) => a.attributeName === name)?.value || '';
@@ -88,16 +88,10 @@ export default function CartPage() {
       }
 
       // Order number — top right
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(0, 0, 0);
-      doc.text(orderNum, pageWidth - margin, hY + 4, { align: 'right' });
-
-      // Right side — Order info
-      doc.setFontSize(16);
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
-      doc.text(`MyOB- ${orderNum}`, pageWidth - margin - 55, hY + 10);
+      doc.text(orderNum, pageWidth - margin, hY + 10, { align: 'right' });
 
       y = hY + 18;
 
@@ -119,12 +113,12 @@ export default function CartPage() {
 
       doc.text('Date:', margin, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(dateStr, margin + 15, y);
+      doc.text(dateStr, margin + 13, y);
 
       doc.setFont('helvetica', 'bold');
-      doc.text(schedLabel, margin + 70, y);
+      doc.text(schedLabel, margin + 50, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(schedFormatted, margin + 110, y);
+      doc.text(schedFormatted, margin + 85, y);
 
       if (user) {
         doc.setFont('helvetica', 'bold');
@@ -344,7 +338,7 @@ export default function CartPage() {
     doc.text('Metfold Sheet Metal — www.metfoldsm.com.au', margin, pageHeight - 4);
     doc.text(orderNum, pageWidth - margin, pageHeight - 4, { align: 'right' });
 
-    const fileName = `Metfold_${orderNum}_${dateStr.replace(/\//g, '-')}.pdf`;
+    const fileName = `${orderNum}_${dateStr.replace(/\//g, '-')}.pdf`;
     doc.save(fileName);
   }, [items, user, deliveryMethod, address, selectedBranch, scheduledDate, comment]);
 
@@ -376,11 +370,6 @@ export default function CartPage() {
     toast.success('Order placed! PDF downloaded.');
   };
 
-  // Handle Download PDF — also validates
-  const handleDownloadPdf = () => {
-    if (!validateOrder()) return;
-    downloadCartPdf();
-  };
 
   if (items.length === 0) {
     return (
@@ -719,16 +708,6 @@ export default function CartPage() {
                   onClick={handlePlaceOrder}
                 >
                   Place Order
-                </Button>
-
-                <Button
-                  variant="outline"
-                  className="mt-2 w-full"
-                  size="lg"
-                  leftIcon={<Download className="h-4 w-4" />}
-                  onClick={handleDownloadPdf}
-                >
-                  Download as PDF
                 </Button>
 
                 <Link

@@ -1002,7 +1002,7 @@ export const importService = {
       // instead of a specific colour, move it to finish_category so real colour can be extracted
       const isRoofSheetRow = !!(roofSheet || (row as any).thickness);
       if (row.colour) {
-        const FINISH_NAMES = ['COLORBOND', 'MATT', 'MATT COLORBOND', 'GALV', 'GALVANISED', 'GALVANIZED', 'ZINCALUME', 'ZINC'];
+        const FINISH_NAMES = ['COLORBOND', 'MATT', 'MATT COLORBOND', 'ULTRA', 'COLORBOND ULTRA', 'ULTRA COLORBOND', 'GALV', 'GALVANISED', 'GALVANIZED', 'ZINCALUME', 'ZINC'];
         const colourUpper = String(row.colour).trim().toUpperCase();
         if (FINISH_NAMES.includes(colourUpper)) {
           // This is a finish category, not a specific colour

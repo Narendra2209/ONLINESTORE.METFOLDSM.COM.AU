@@ -119,8 +119,10 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
   const matchedVariant = useMemo(() => {
     if (!isVariantBased || !product.variants) return null;
 
-    // Get all user-selectable attributes (Material, Colour, Length, Finish Category when used as material selector)
-    const selectableAttrNames = Object.keys(variantAttributeOptions);
+    // Get all user-selectable attributes — exclude Finish Category when Material is used as the selector
+    const selectableAttrNames = Object.keys(variantAttributeOptions).filter(
+      (name) => !(name === 'Finish Category' && variantAttributeOptions['Material']?.values.size >= 1)
+    );
     const allSelected = selectableAttrNames.every((name) => selectedAttributes[name]);
     if (!allSelected) return null;
 
@@ -379,9 +381,9 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
     });
 
     // Determine the "material" key — could be 'Material' or 'Finish Category' in variant attributes
-    const materialAttrKey = variantAttributeOptions['Material']?.values.size > 1
+    const materialAttrKey = variantAttributeOptions['Material']?.values.size >= 1
       ? 'Material'
-      : variantAttributeOptions['Finish Category']?.values.size > 1
+      : variantAttributeOptions['Finish Category']?.values.size >= 1
         ? 'Finish Category'
         : '';
     const selectedMaterial = materialAttrKey ? (selectedAttributes[materialAttrKey] || '') : '';
