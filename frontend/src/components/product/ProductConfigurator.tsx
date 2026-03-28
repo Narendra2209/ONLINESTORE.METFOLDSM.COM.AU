@@ -886,42 +886,49 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
             const mmNums = mmValues.map((v) => parseInt(v.mm)).sort((a, b) => a - b);
             const displayMm = selectedVal ? codeToMm(selectedVal) : '';
             const isInvalid = displayMm && !mmValues.some((v) => v.mm === displayMm);
+            const isDownpipeLength = !!(product.category?.slug?.includes('downpipe') && attrName === 'Length');
 
             return (
               <div key={attrName}>
                 <label className="mb-2 block text-sm font-semibold text-steel-700">
-                  {attrName} (mm)                  {displayMm && !isInvalid && (
+                  {attrName} (mm)
+                  {displayMm && !isInvalid && (
                     <span className="ml-2 font-normal text-steel-500">— {displayMm}mm</span>
                   )}
                 </label>
-                <input
-                  type="number"
-                  min={mmNums[0]}
-                  max={mmNums[mmNums.length - 1]}
-                  step={50}
-                  value={displayMm}
-                  placeholder={`Enter ${attrName.toLowerCase()} (${mmNums[0]}mm – ${mmNums[mmNums.length - 1]}mm)`}
-                  onChange={(e) => {
-                    const mmInput = e.target.value;
-                    if (!mmInput) { handleAttributeChange(attrName, ''); return; }
-                    handleAttributeChange(attrName, mmToCode(mmInput));
-                  }}
-                  className={cn(
-                    'w-full rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500',
-                    isInvalid
-                      ? 'border-red-300 bg-red-50 text-red-700'
-                      : selectedVal && availableValues.includes(selectedVal)
-                        ? 'border-brand-600 bg-brand-50 text-brand-700'
-                        : 'border-steel-200 text-steel-600'
-                  )}
-                />
-                {isInvalid && (
-                  <p className="mt-1 text-xs text-red-500">
-                    Not a standard size. Available: {mmValues.map((v) => `${v.mm}mm`).join(', ')}
-                  </p>
+                {/* Hide manual input for downpipe Length — buttons only */}
+                {!isDownpipeLength && (
+                  <>
+                    <input
+                      type="number"
+                      min={mmNums[0]}
+                      max={mmNums[mmNums.length - 1]}
+                      step={50}
+                      value={displayMm}
+                      placeholder={`Enter ${attrName.toLowerCase()} (${mmNums[0]}mm – ${mmNums[mmNums.length - 1]}mm)`}
+                      onChange={(e) => {
+                        const mmInput = e.target.value;
+                        if (!mmInput) { handleAttributeChange(attrName, ''); return; }
+                        handleAttributeChange(attrName, mmToCode(mmInput));
+                      }}
+                      className={cn(
+                        'w-full rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500',
+                        isInvalid
+                          ? 'border-red-300 bg-red-50 text-red-700'
+                          : selectedVal && availableValues.includes(selectedVal)
+                            ? 'border-brand-600 bg-brand-50 text-brand-700'
+                            : 'border-steel-200 text-steel-600'
+                      )}
+                    />
+                    {isInvalid && (
+                      <p className="mt-1 text-xs text-red-500">
+                        Not a standard size. Available: {mmValues.map((v) => `${v.mm}mm`).join(', ')}
+                      </p>
+                    )}
+                  </>
                 )}
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {mmValues.map(({ code, mm }) => (
+                  {mmValues.sort((a, b) => parseInt(a.mm) - parseInt(b.mm)).map(({ code, mm }) => (
                     <button
                       key={code}
                       onClick={() => handleAttributeChange(attrName, code)}

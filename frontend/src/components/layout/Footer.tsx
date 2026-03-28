@@ -61,7 +61,7 @@ export default function Footer() {
       {/* Main footer */}
       <div className="container-main py-8 sm:py-12">
         <div className="grid grid-cols-2 gap-6 sm:gap-10 md:grid-cols-2 lg:grid-cols-5">
-          {/* Brand */}
+          {/* Brand + Branches */}
           <div className="col-span-2 lg:col-span-2">
             <div className="mb-4">
               <img
@@ -70,28 +70,29 @@ export default function Footer() {
                 className="h-12 w-auto"
               />
             </div>
-            <p className="mb-6 text-sm leading-relaxed text-steel-400 max-w-sm">
+            <p className="mb-5 text-sm leading-relaxed text-steel-400 max-w-sm">
               Premium roofing, cladding, and sheet metal products for residential and commercial projects across Australia.
             </p>
-            <div className="space-y-3 text-sm">
-              <a href="tel:1300000000" className="flex items-center gap-3 text-steel-300 hover:text-white transition-colors group">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-steel-800 group-hover:bg-brand-600/20 transition-colors">
-                  <Phone className="h-4 w-4 text-brand-400" />
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">Our Branches</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                { name: 'Sunbury', address: '51 McDougall Road, Sunbury, VIC 3429', phone: '(03) 9732 0148' },
+                { name: 'Melton', address: '16 Collins Road, Melton, VIC 3339', phone: '(03) 9747 9044' },
+                { name: 'Pakenham', address: '47 Sette CCT, Pakenham, VIC 3810', phone: '(03) 5910 6099' },
+                { name: 'Moama', address: '11 Bowlan St, Moama, NSW 2731', phone: '(03) 5482 1468' },
+              ].map((branch) => (
+                <div key={branch.name} className="rounded-lg bg-steel-800/50 p-3">
+                  <p className="text-xs font-bold text-white mb-1">METFOLD - {branch.name.toUpperCase()}</p>
+                  <div className="flex items-start gap-1.5 text-[11px] text-steel-400 mb-1">
+                    <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0 text-brand-400" />
+                    <span>{branch.address}</span>
+                  </div>
+                  <a href={`tel:${branch.phone.replace(/[() ]/g, '')}`} className="flex items-center gap-1.5 text-[11px] text-steel-400 hover:text-white transition-colors">
+                    <Phone className="h-3 w-3 flex-shrink-0 text-brand-400" />
+                    <span>{branch.phone}</span>
+                  </a>
                 </div>
-                <span className="font-medium">1300 XXX XXX</span>
-              </a>
-              <a href="mailto:info@metfold.com.au" className="flex items-center gap-3 text-steel-300 hover:text-white transition-colors group">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-steel-800 group-hover:bg-brand-600/20 transition-colors">
-                  <Mail className="h-4 w-4 text-brand-400" />
-                </div>
-                <span>info@metfold.com.au</span>
-              </a>
-              <div className="flex items-center gap-3 text-steel-300">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-steel-800">
-                  <MapPin className="h-4 w-4 text-brand-400" />
-                </div>
-                <span>Melbourne, VIC, Australia</span>
-              </div>
+              ))}
             </div>
           </div>
 
