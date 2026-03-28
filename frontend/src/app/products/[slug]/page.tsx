@@ -1,16 +1,18 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Product } from '@/types/product';
 import { productApi } from '@/services/product.service';
+import { useAuthStore } from '@/store/authStore';
 import ProductConfigurator from '@/components/product/ProductConfigurator';
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import Badge from '@/components/ui/Badge';
 import Skeleton from '@/components/ui/Skeleton';
 import { cn } from '@/lib/utils';
-import { Package, FileText, Truck, Shield, ZoomIn } from 'lucide-react';
+import { Package, FileText, Truck, Shield, ZoomIn, Upload, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -19,6 +21,28 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('description');
   const [selectedImage, setSelectedImage] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuthStore();
+  const isAdmin = user?.role && ['super_admin', 'admin', 'manager', 'sales_staff', 'inventory_staff', 'content_staff'].includes(user.role);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !product) return;
+    try {
+      setUploading(true);
+      const result = await productApi.uploadProductImage(product._id, file);
+      if (result?.images) {
+        setProduct({ ...product, images: result.images });
+        setSelectedImage(result.images.length - 1);
+      }
+      toast.success('Image uploaded');
+    } catch {
+      toast.error('Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -97,15 +121,35 @@ export default function ProductDetailPage() {
                     alt={activeImage.alt || product.name}
                     className="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"
                   />
-                  <div className="absolute bottom-3 right-3 rounded-full bg-white/80 backdrop-blur-sm p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
-                    <ZoomIn className="h-4 w-4 text-steel-600" />
+                  <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {isAdmin && (
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="rounded-full bg-white/80 backdrop-blur-sm p-2 shadow-sm hover:bg-white transition-colors"
+                      >
+                        {uploading ? <Loader2 className="h-4 w-4 text-steel-600 animate-spin" /> : <Upload className="h-4 w-4 text-steel-600" />}
+                      </button>
+                    )}
+                    <div className="rounded-full bg-white/80 backdrop-blur-sm p-2 shadow-sm">
+                      <ZoomIn className="h-4 w-4 text-steel-600" />
+                    </div>
                   </div>
                 </>
               ) : (
-                <div className="text-steel-300">
+                <div className="flex flex-col items-center gap-3 text-steel-300">
                   <Package className="h-24 w-24" />
+                  {isAdmin && (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 transition-colors"
+                    >
+                      {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                      Upload Image
+                    </button>
+                  )}
                 </div>
               )}
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
             </div>
 
             {/* Thumbnail strip */}

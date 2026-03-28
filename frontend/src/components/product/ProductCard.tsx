@@ -1,9 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils';
-import { Package, Eye } from 'lucide-react';
+import { Package, Eye, Upload, Loader2 } from 'lucide-react';
+import { productApi } from '@/services/product.service';
+import { useAuthStore } from '@/store/authStore';
+import toast from 'react-hot-toast';
 
 interface ProductCardProps {
   product: {
@@ -24,8 +27,29 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const defaultImage = product.images?.find((i) => i.isDefault) || product.images?.[0];
+  const [imageUrl, setImageUrl] = useState(product.images?.find((i) => i.isDefault)?.url || product.images?.[0]?.url || '');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuthStore();
+  const isAdmin = user?.role && ['super_admin', 'admin', 'manager', 'sales_staff', 'inventory_staff', 'content_staff'].includes(user.role);
   const isQuoteOnly = product.pricingModel === 'quote_only';
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.preventDefault();
+    try {
+      setUploading(true);
+      const result = await productApi.uploadProductImage(product._id, file);
+      const newUrl = result?.images?.[result.images.length - 1]?.url || URL.createObjectURL(file);
+      setImageUrl(newUrl);
+      toast.success('Image uploaded');
+    } catch {
+      toast.error('Upload failed — sign in as admin');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const renderPrice = () => {
     if (isQuoteOnly) {
@@ -75,27 +99,50 @@ export default function ProductCard({ product }: ProductCardProps) {
     >
       {/* Image */}
       <div className="relative aspect-[4/3] bg-steel-50 overflow-hidden">
-        {defaultImage?.url ? (
+        {imageUrl ? (
           <img
-            src={defaultImage.url}
-            alt={defaultImage.alt || product.name}
+            src={imageUrl}
+            alt={product.name}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
         ) : (
-          <div className="flex h-full items-center justify-center">
+          <div className="flex h-full flex-col items-center justify-center gap-2">
             <Package className="h-12 w-12 text-steel-200" />
+            {isAdmin && (
+              <>
+                <button
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileInputRef.current?.click(); }}
+                  className="flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 transition-colors"
+                >
+                  {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                  Upload Image
+                </button>
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              </>
+            )}
           </div>
         )}
 
         {/* Hover overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-        {/* Quick view button */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        {/* Quick view + upload buttons on hover */}
+        <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <span className="flex items-center gap-2 rounded-full bg-white/90 backdrop-blur-sm px-4 py-2 text-sm font-medium text-steel-900 shadow-lg">
             <Eye className="h-4 w-4" />
             View Details
           </span>
+          {imageUrl && isAdmin && (
+            <>
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileInputRef.current?.click(); }}
+                className="flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur-sm px-3 py-2 text-sm font-medium text-steel-900 shadow-lg hover:bg-white transition-colors"
+              >
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              </button>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+            </>
+          )}
         </div>
 
         {/* Badges */}

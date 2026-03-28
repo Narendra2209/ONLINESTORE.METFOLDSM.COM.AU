@@ -48,4 +48,13 @@ export const productApi = {
     const { data } = await api.get<ApiResponse<any>>(`/products/sku-lookup?sku=${encodeURIComponent(sku)}`);
     return data.data;
   },
+
+  async uploadProductImage(productId: string, file: File) {
+    const formData = new FormData();
+    formData.append('images', file);
+    const { data } = await api.post<ApiResponse<any>>(`/admin/products/${productId}/images`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data.data;
+  },
 };
