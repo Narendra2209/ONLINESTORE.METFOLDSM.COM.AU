@@ -20,8 +20,19 @@ export const getFlashingPrice = catchAsync(async (req: Request, res: Response) =
   const thicknessNum = parseFloat(thickness as string) || 0.55;
   const materialStr = ((material as string) || 'COLORBOND').toUpperCase();
 
-  // Build SKU pattern: FC{girth}G{folds}F
-  const sku = `FC${girthNum}G${foldsNum}F`;
+  // Build SKU based on material type:
+  //   Zinc:       F.{gauge}Z{girth}G{folds}F   e.g. F.55Z800G9F
+  //   Galvanised: F.{gauge}G{girth}G{folds}F   e.g. F.75G100G1F
+  //   Colorbond:  FC{girth}G{folds}F           e.g. FC100G1F
+  const gaugeStr = thicknessNum.toFixed(2).replace('0.', '');  // 0.55 -> "55", 0.75 -> "75"
+  let sku: string;
+  if (materialStr === 'ZINC') {
+    sku = `F.${gaugeStr}Z${girthNum}G${foldsNum}F`;
+  } else if (materialStr === 'GALVANISED') {
+    sku = `F.${gaugeStr}G${girthNum}G${foldsNum}F`;
+  } else {
+    sku = `FC${girthNum}G${foldsNum}F`;
+  }
 
   // Look up product by SKU
   const product = await Product.findOne({
