@@ -78,6 +78,34 @@ const config: Config = {
           '0%': { opacity: '0', transform: 'translateY(10px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        'aurora': {
+          '0%': { backgroundPosition: '0% 50%, 50% 50%, 100% 50%' },
+          '50%': { backgroundPosition: '100% 50%, 0% 50%, 50% 50%' },
+          '100%': { backgroundPosition: '0% 50%, 50% 50%, 100% 50%' },
+        },
+        'light-streak': {
+          '0%': { transform: 'translateX(-100%) skewX(-15deg)', opacity: '0' },
+          '20%': { opacity: '0.7' },
+          '100%': { transform: 'translateX(200%) skewX(-15deg)', opacity: '0' },
+        },
+        'glow-pulse': {
+          '0%, 100%': { opacity: '0.4', transform: 'scale(1)' },
+          '50%': { opacity: '0.8', transform: 'scale(1.1)' },
+        },
+        'slide-up-slow': {
+          '0%': { opacity: '0', transform: 'translateY(60px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'card-float': {
+          '0%, 100%': { transform: 'translateY(0px) rotateX(2deg) rotateY(-2deg)' },
+          '50%': { transform: 'translateY(-15px) rotateX(-2deg) rotateY(2deg)' },
+        },
+        'particle-drift': {
+          '0%': { transform: 'translate(0, 0) scale(0)', opacity: '0' },
+          '10%': { opacity: '1' },
+          '90%': { opacity: '1' },
+          '100%': { transform: 'translate(var(--drift-x, 100px), var(--drift-y, -200px)) scale(1)', opacity: '0' },
+        },
       },
       animation: {
         'float': 'float 6s ease-in-out infinite',
@@ -85,6 +113,11 @@ const config: Config = {
         'shimmer': 'shimmer 3s linear infinite',
         'gradient-x': 'gradient-x 6s ease infinite',
         'count-up': 'count-up 0.5s ease-out forwards',
+        'aurora': 'aurora 15s ease infinite',
+        'light-streak': 'light-streak 6s ease-in-out infinite',
+        'glow-pulse': 'glow-pulse 4s ease-in-out infinite',
+        'slide-up-slow': 'slide-up-slow 1s ease-out forwards',
+        'card-float': 'card-float 6s ease-in-out infinite',
       },
     },
   },

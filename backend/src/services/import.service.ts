@@ -937,6 +937,17 @@ export const importService = {
       }
       row.product_name = String(row.product_name).trim();
 
+      // Normalize ALL-CAPS product names to Title Case
+      // e.g. "CAST ANGLE EXTERNAL 90DEGREE" → "Cast Angle External 90 Degree"
+      if (row.product_name === row.product_name.toUpperCase() && row.product_name.length > 3) {
+        row.product_name = row.product_name
+          .toLowerCase()
+          .replace(/(\d+)(degree|mm|m)\b/gi, '$1 $2') // separate number from unit: "90degree" → "90 degree"
+          .replace(/\b\w/g, (c) => c.toUpperCase())    // capitalize first letter of each word
+          .replace(/\b(Mm|M)\b/g, (m) => m.toLowerCase()) // keep units lowercase
+          .trim();
+      }
+
       // Detect roof sheet data from product_name, description, or SKU
       // Try parsing product_name first (e.g. ".42 M-5RIB COLORBOND BASALT")
       let roofSheet = parseRoofSheetName(row.product_name);
@@ -999,15 +1010,24 @@ export const importService = {
       }
 
       // If the COLOR column has a generic finish name (COLORBOND, MATT, GALV)
-      // instead of a specific colour, move it to finish_category so real colour can be extracted
+      // instead of a specific colour, move it to material so real colour can be extracted
       const isRoofSheetRow = !!(roofSheet || (row as any).thickness);
       if (row.colour) {
         const FINISH_NAMES = ['COLORBOND', 'MATT', 'MATT COLORBOND', 'ULTRA', 'COLORBOND ULTRA', 'ULTRA COLORBOND', 'GALV', 'GALVANISED', 'GALVANIZED', 'ZINCALUME', 'ZINC'];
         const colourUpper = String(row.colour).trim().toUpperCase();
         if (FINISH_NAMES.includes(colourUpper)) {
-          // This is a finish category, not a specific colour
+          // This is a material/finish, not a specific colour — set as material
           if (!row.finish_category) (row as any).finish_category = String(row.colour).trim();
-          row.colour = undefined as any; // clear so real colour can be extracted
+          if (!(row as any).material) {
+            const finishToMat: Record<string, string> = {
+              'COLORBOND': 'Colorbond', 'MATT': 'Matt Colorbond', 'MATT COLORBOND': 'Matt Colorbond',
+              'ULTRA': 'Ultra', 'COLORBOND ULTRA': 'Ultra', 'ULTRA COLORBOND': 'Ultra',
+              'GALV': 'Galvanised', 'GALVANISED': 'Galvanised', 'GALVANIZED': 'Galvanised',
+              'ZINCALUME': 'Zincalume', 'ZINC': 'Zincalume',
+            };
+            (row as any).material = finishToMat[colourUpper] || String(row.colour).trim();
+          }
+          row.colour = undefined as any; // clear so real colour can be extracted from SKU
         }
       }
 

@@ -41,7 +41,7 @@ export default function AdminImportsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [importType, setImportType] = useState<'products' | 'prices' | 'stock'>('products');
+  const [importType, setImportType] = useState<'products' | 'prices' | 'stock' | 'cladding'>('products');
   const [expandedJob, setExpandedJob] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,6 +102,40 @@ export default function AdminImportsPage() {
       return;
     }
 
+    // Cladding import — skip preview, upload directly
+    if (importType === 'cladding') {
+      setPreviewFile(file);
+      setImporting(true);
+      setImportProgress(0);
+      setImportStage('uploading');
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const { data } = await api.post('/admin/cladding/import', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: 300000,
+          onUploadProgress: (progressEvent) => {
+            const pct = progressEvent.total ? Math.round((progressEvent.loaded / progressEvent.total) * 100) : 0;
+            setImportProgress(pct);
+            if (pct >= 100) setImportStage('processing');
+          },
+        });
+        const msg = data.data;
+        toast.success(`Cladding import done: ${msg?.created || 0} panels imported, ${msg?.errors?.length || 0} errors`);
+        if (msg?.errors?.length > 0) {
+          console.warn('Cladding import errors:', msg.errors);
+        }
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || 'Cladding import failed');
+      } finally {
+        setImporting(false);
+        setImportProgress(0);
+        setImportStage('');
+        setPreviewFile(null);
+      }
+      return;
+    }
+
     setPreviewing(true);
     try {
       const formData = new FormData();
@@ -139,7 +173,10 @@ export default function AdminImportsPage() {
       formData.append('file', previewFile);
       formData.append('type', importType);
 
-      const { data } = await api.post('/admin/imports/upload', formData, {
+      // Cladding panels use a separate endpoint
+      const uploadUrl = importType === 'cladding' ? '/admin/cladding/import' : '/admin/imports/upload';
+
+      const { data } = await api.post(uploadUrl, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 600000,
         onUploadProgress: (progressEvent) => {
@@ -154,14 +191,16 @@ export default function AdminImportsPage() {
       });
 
       const msg = data.data;
-      if (msg?.successCount > 0 || msg?.errorCount > 0) {
+      if (importType === 'cladding') {
+        toast.success(`Cladding import done: ${msg?.created || 0} panels imported, ${msg?.errors?.length || 0} errors`);
+      } else if (msg?.successCount > 0 || msg?.errorCount > 0) {
         toast.success(`Import done: ${msg.successCount} success, ${msg.errorCount} errors`);
       } else {
         toast.success(data.message || 'Import completed');
       }
       setPreviewData(null);
       setPreviewFile(null);
-      fetchJobs();
+      if (importType !== 'cladding') fetchJobs();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Import failed');
     } finally {
@@ -255,6 +294,7 @@ export default function AdminImportsPage() {
               <option value="products">Products (Full Import)</option>
               <option value="prices">Prices Only</option>
               <option value="stock">Stock Levels Only</option>
+              <option value="cladding">Cladding Panels</option>
             </select>
           </div>
         </div>
@@ -463,6 +503,13 @@ export default function AdminImportsPage() {
             )}
             {importType === 'stock' && (
               <p className="text-xs text-steel-600"><strong>Required:</strong> sku, stock</p>
+            )}
+            {importType === 'cladding' && (
+              <div className="text-xs text-steel-600 space-y-2">
+                <p><strong>Required columns:</strong> PRODUCT name, MATERIAL, RIB, COVER, base price, SKU</p>
+                <p><strong>Optional:</strong> GAUGE, UOM (defaults to LM)</p>
+                <p className="text-steel-500">Each row = one variant. Price = base price x length x quantity.</p>
+              </div>
             )}
           </div>
         )}

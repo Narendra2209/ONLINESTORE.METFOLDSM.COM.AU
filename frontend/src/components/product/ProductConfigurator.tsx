@@ -21,15 +21,54 @@ interface ProductConfiguratorProps {
 const DIMENSION_ATTRS = ['Length', 'Width', 'Depth'];
 
 // Preferred display order for variant attributes
-const ATTR_ORDER = ['Material', 'Colour', 'Thickness', 'Width', 'Length', 'Depth'];
+const ATTR_ORDER = ['Material', 'Colour', 'Rib Size', 'Cover Width', 'Thickness', 'Width', 'Length', 'Depth'];
+
+// Colour codes for SKU suffix
+const COLOUR_CODES: Record<string, string> = {
+  'Basalt': 'BA',
+  'Classic Cream': 'CC',
+  'Cottage Green': 'CG',
+  'Cove': 'CO',
+  'Deep Ocean': 'DO',
+  'Dover White': 'DW',
+  'Dune': 'DU',
+  'Evening Haze': 'EH',
+  'Gully': 'GU',
+  'Ironstone': 'IS',
+  'Jasper': 'JA',
+  'Mangrove': 'MG',
+  'Manor Red': 'MR',
+  'Monument': 'MO',
+  'Night Sky': 'NS',
+  'Pale Eucalypt': 'PE',
+  'Paperbark': 'PB',
+  'Shale Grey': 'SG',
+  'Southerly': 'SO',
+  'Surfmist': 'SM',
+  'Terrain': 'TE',
+  'Wallaby': 'WA',
+  'Windspray': 'WS',
+  'Woodland Grey': 'WG',
+  'Bluegum': 'BG',
+  'Zincalume': 'ZA',
+  'Galvanised': 'GA',
+  'Zinc': 'ZN',
+  'Copper': 'CU',
+  'Corten': 'CT',
+  'VM ZINC': 'VZ',
+};
+
+function getColourCode(colour: string): string {
+  return COLOUR_CODES[colour] || colour.substring(0, 2).toUpperCase();
+}
 
 // Colours available per material
 const MATERIAL_COLOURS: Record<string, { name: string; hex: string }[]> = {
   'Colorbond': [
     { name: 'Basalt', hex: '#646560' },
+    { name: 'Bluegum', hex: '#4A6670' },
     { name: 'Classic Cream', hex: '#E8D8A8' },
     { name: 'Cottage Green', hex: '#3A5243' },
-    { name: 'Cove', hex: '#3D5C5E' },
     { name: 'Deep Ocean', hex: '#1B3A4B' },
     { name: 'Dover White', hex: '#E8E4D8' },
     { name: 'Dune', hex: '#B5A78C' },
@@ -37,7 +76,6 @@ const MATERIAL_COLOURS: Record<string, { name: string; hex: string }[]> = {
     { name: 'Gully', hex: '#5B6B52' },
     { name: 'Ironstone', hex: '#4A3C30' },
     { name: 'Jasper', hex: '#5C3A2E' },
-    { name: 'Mangrove', hex: '#4B5340' },
     { name: 'Manor Red', hex: '#7B2D26' },
     { name: 'Monument', hex: '#35393B' },
     { name: 'Night Sky', hex: '#1E2326' },
@@ -46,7 +84,6 @@ const MATERIAL_COLOURS: Record<string, { name: string; hex: string }[]> = {
     { name: 'Shale Grey', hex: '#A8A49C' },
     { name: 'Southerly', hex: '#969E98' },
     { name: 'Surfmist', hex: '#DDD9CE' },
-    { name: 'Terrain', hex: '#7A6E5E' },
     { name: 'Wallaby', hex: '#817B6F' },
     { name: 'Windspray', hex: '#7E8580' },
     { name: 'Woodland Grey', hex: '#4B4D46' },
@@ -141,7 +178,11 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
     if (!product.variants) return [];
 
     // Get all other selected attributes (not the current one, exclude internal keys like _userLength)
-    const otherSelections = Object.entries(selectedAttributes).filter(([k]) => k !== attrName && !k.startsWith('_'));
+    // Also exclude attributes that don't exist in variant data (e.g. Colour for cladding)
+    const variantAttrNames = new Set(Object.keys(variantAttributeOptions));
+    const otherSelections = Object.entries(selectedAttributes).filter(
+      ([k]) => k !== attrName && !k.startsWith('_') && variantAttrNames.has(k)
+    );
 
     // Filter variants that match the other selections
     const matchingVariants = product.variants.filter((v) =>
@@ -362,6 +403,261 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
     );
   }
 
+  /* cladding now uses the variant system below */
+  if (false as boolean) {
+    const claddingMaterial = '', claddingRib = '', claddingCover = 0, claddingLength = 0, claddingColour = '';
+    const setCladdingMaterial = (_: any) => {}, setCladdingRib = (_: any) => {}, setCladdingCover = (_: any) => {}, setCladdingLength = (_: any) => {}, setCladdingColour = (_: any) => {};
+    const claddingPanels: any[] = [], claddingLoaded = true, isCladding = false;
+    const COLOUR_CODES: Record<string, string> = {};
+    const getColourCode = (c: string) => COLOUR_CODES[c] || c.substring(0, 2);
+    const cMaterials: string[] = [], cRibs: string[] = [], cCovers: number[] = [];
+    const cMatchedPanel: any = null, needsColour = false, cColours: any[] = [], effectiveColour = '';
+    const cSkuWithColour = '';
+    const cUnitPrice = 0, cLineTotal = 0, cAllSelected = false;
+
+    const handleCladdingAddToCart = () => {
+      if (!cMatchedPanel) {
+        toast.error('Please select material, rib size, and cover width');
+        return;
+      }
+      if (needsColour && !claddingColour) {
+        toast.error('Please select a colour');
+        return;
+      }
+      if (!claddingLength || (claddingLength as number) <= 0 || (claddingLength as number) > 8) {
+        toast.error('Please enter a valid length (0.1 – 8m)');
+        return;
+      }
+      addItem({
+        _id: '',
+        product: {
+          _id: product._id,
+          name: product.name,
+          slug: product.slug,
+          sku: cSkuWithColour,
+          images: product.images.map((i: any) => ({ url: i.url, alt: i.alt })),
+        },
+        selectedAttributes: [
+          { attributeName: 'Material', value: cMatchedPanel.material },
+          { attributeName: 'Colour', value: effectiveColour },
+          { attributeName: 'Rib', value: cMatchedPanel.rib },
+          { attributeName: 'Cover', value: `${cMatchedPanel.cover}mm` },
+          ...(cMatchedPanel.gauge ? [{ attributeName: 'Gauge', value: cMatchedPanel.gauge }] : []),
+        ],
+        pricingModel: 'per_metre',
+        unitPrice: cMatchedPanel.basePrice,
+        length: claddingLength as number,
+        quantity,
+        lineTotal: cLineTotal,
+      });
+      toast.success('Added to cart');
+      useCartStore.getState().setCartOpen(true);
+    };
+
+    if (!claddingLoaded) {
+      return <div className="py-8 text-center text-steel-400"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>;
+    }
+
+    if (claddingPanels.length === 0) {
+      return <div className="py-8 text-center text-steel-500">No pricing data available for this product yet.</div>;
+    }
+
+    return (
+      <div className="space-y-5">
+        {/* 1. Material */}
+        <div>
+          <label className="mb-2 block text-sm font-semibold text-steel-700">
+            Material <span className="text-red-500">*</span>
+            {claddingMaterial && <span className="ml-2 font-normal text-steel-500">— {claddingMaterial}</span>}
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {cMaterials.map((mat: string) => (
+              <button
+                key={mat}
+                onClick={() => { setCladdingMaterial(mat); setCladdingRib(''); setCladdingCover(''); setCladdingColour(''); }}
+                className={cn(
+                  'px-4 py-2.5 rounded-lg text-sm font-medium border-2 transition-all',
+                  claddingMaterial === mat
+                    ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-sm'
+                    : 'border-steel-200 text-steel-600 hover:border-steel-300 hover:bg-steel-50'
+                )}
+              >
+                {mat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 2. Colour — only for Colorbond, Matt Colorbond, Ultra */}
+        {needsColour && (
+          <div className={cn(!claddingMaterial && 'opacity-50 pointer-events-none')}>
+            <label className="mb-2 block text-sm font-semibold text-steel-700">
+              Colour <span className="text-red-500">*</span>
+              {claddingColour && <span className="ml-2 font-normal text-steel-500">— {claddingColour}</span>}
+              <span className="ml-2 font-normal text-steel-400 text-xs">({cColours.length} colours)</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {cColours.map((colour) => (
+                <button
+                  key={colour.name}
+                  onClick={() => setCladdingColour(colour.name)}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border-2 transition-all',
+                    claddingColour === colour.name
+                      ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-sm'
+                      : 'border-steel-200 text-steel-600 hover:border-steel-300 hover:bg-steel-50'
+                  )}
+                  title={colour.name}
+                >
+                  <span
+                    className="h-5 w-5 rounded-full border border-steel-300 flex-shrink-0"
+                    style={{ backgroundColor: colour.hex }}
+                  />
+                  {colour.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 3. Rib Size */}
+        <div className={cn(!claddingMaterial && 'opacity-50 pointer-events-none')}>
+          <label className="mb-2 block text-sm font-semibold text-steel-700">
+            Rib Size <span className="text-red-500">*</span>
+            {claddingRib && <span className="ml-2 font-normal text-steel-500">— {claddingRib}</span>}
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {cRibs.map((rib: string) => (
+              <button
+                key={rib}
+                onClick={() => { setCladdingRib(rib); setCladdingCover(''); }}
+                className={cn(
+                  'px-4 py-2.5 rounded-lg text-sm font-medium border-2 transition-all',
+                  claddingRib === rib
+                    ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-sm'
+                    : 'border-steel-200 text-steel-600 hover:border-steel-300 hover:bg-steel-50'
+                )}
+              >
+                {rib}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 4. Cover Width */}
+        <div className={cn(!claddingRib && 'opacity-50 pointer-events-none')}>
+          <label className="mb-2 block text-sm font-semibold text-steel-700">
+            Cover Width <span className="text-red-500">*</span>
+            {claddingCover && <span className="ml-2 font-normal text-steel-500">— {claddingCover}mm</span>}
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {cCovers.map((cover: number) => (
+              <button
+                key={cover}
+                onClick={() => setCladdingCover(cover)}
+                className={cn(
+                  'px-4 py-2.5 rounded-lg text-sm font-medium border-2 transition-all',
+                  claddingCover === cover
+                    ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-sm'
+                    : 'border-steel-200 text-steel-600 hover:border-steel-300 hover:bg-steel-50'
+                )}
+              >
+                {cover}mm
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 5. Length */}
+        <div className={cn(!cMatchedPanel && 'opacity-50 pointer-events-none')}>
+          <label className="mb-2 block text-sm font-semibold text-steel-700">
+            Length (metres) <span className="text-red-500">*</span>
+            <span className="ml-2 font-normal text-steel-400 text-xs">Max 8m</span>
+          </label>
+          <input
+            type="number"
+            min="0.1"
+            max="8"
+            step="0.1"
+            value={claddingLength}
+            onChange={(e) => setCladdingLength(e.target.value ? parseFloat(e.target.value) : '')}
+            placeholder="Enter length (0.1 – 8m)"
+            disabled={!cMatchedPanel}
+            className="w-full rounded-lg border border-steel-300 px-4 py-3 text-sm text-steel-900 placeholder:text-steel-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-steel-50 disabled:text-steel-400"
+          />
+          {claddingLength && (claddingLength as number) > 8 && (
+            <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" /> Maximum length is 8 metres
+            </p>
+          )}
+        </div>
+
+        {/* 6. Quantity */}
+        <div>
+          <label className="mb-2 block text-sm font-semibold text-steel-700">
+            Quantity <span className="text-red-500">*</span>
+          </label>
+          <div className="flex items-center rounded-lg border border-steel-300 w-fit">
+            <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="px-3 py-2 text-steel-600 hover:bg-steel-50">-</button>
+            <input type="number" min={1} value={quantity} onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))} className="w-16 border-x border-steel-300 text-center py-2 text-sm" />
+            <button onClick={() => setQuantity(quantity + 1)} className="px-3 py-2 text-steel-600 hover:bg-steel-50">+</button>
+          </div>
+        </div>
+
+        {/* Price box */}
+        {cMatchedPanel && (
+          <div className="rounded-lg border border-brand-200 bg-brand-50/50 p-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm text-brand-700">
+              <Check className="h-4 w-4" />
+              <span className="font-medium">SKU: {cSkuWithColour}</span>
+            </div>
+            <div className="flex justify-between text-sm text-steel-600">
+              <span>Unit price:</span>
+              <span className="font-bold text-steel-900">{formatCurrency(cMatchedPanel.basePrice)}/LM</span>
+            </div>
+            {cAllSelected && (
+              <>
+                <div className="flex justify-between text-sm text-steel-600">
+                  <span>Per sheet ({formatCurrency(cMatchedPanel.basePrice)} x {claddingLength}m):</span>
+                  <span className="font-bold text-steel-900">{formatCurrency(cUnitPrice)}</span>
+                </div>
+                <div className="border-t border-brand-200 pt-2 flex justify-between items-baseline">
+                  <span className="text-sm font-semibold text-steel-700">Total:</span>
+                  <div className="text-right">
+                    <span className="text-2xl font-bold text-steel-900">{formatCurrency(cLineTotal)}</span>
+                    <span className="block text-xs text-steel-400">Excl. GST</span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Buttons */}
+        <div className="flex gap-3">
+          <Button
+            size="lg"
+            className="flex-1"
+            leftIcon={<ShoppingCart className="h-5 w-5" />}
+            onClick={handleCladdingAddToCart}
+            disabled={!cAllSelected}
+          >
+            Add to Cart
+          </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            leftIcon={<Zap className="h-5 w-5" />}
+            onClick={() => { handleCladdingAddToCart(); if (cAllSelected) router.push('/cart'); }}
+            disabled={!cAllSelected}
+          >
+            Buy Now
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // ═══════════ CONFIGURABLE: VARIANT-BASED (sumps, rainheads, etc.) ═══════════
   if (isVariantBased) {
     const attrNames = Object.keys(variantAttributeOptions);
@@ -389,10 +685,17 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
     const selectedMaterial = materialAttrKey ? (selectedAttributes[materialAttrKey] || '') : '';
     const hasMaterialVariation = !!materialAttrKey;
 
-    // Filter material colours to ONLY those that exist in actual variant data
+    // Filter material colours — use variant data if Colour attribute exists, otherwise show all from MATERIAL_COLOURS
+    const hasColourInVariants = !!variantAttributeOptions['Colour'];
     const materialColours = useMemo(() => {
       if (!selectedMaterial || !materialAttrKey) return [];
       const displayColours = MATERIAL_COLOURS[selectedMaterial] || [];
+
+      if (!hasColourInVariants) {
+        // Variants don't have Colour attribute (e.g. cladding) — show all colours for this material
+        return displayColours;
+      }
+
       // Get actual colour values from variants that have this material/finish
       const actualColours = new Set<string>();
       for (const v of product.variants || []) {
@@ -412,7 +715,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
         }
       }
       return filtered;
-    }, [selectedMaterial, materialAttrKey, product.variants]);
+    }, [selectedMaterial, materialAttrKey, product.variants, hasColourInVariants]);
 
     // For products without Material/Finish Category variation, build colour list from variants
     const standaloneColours = useMemo(() => {
@@ -445,8 +748,17 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
     }, [isVariantBased]);
 
     // When material/finish changes, reset colour and dimensions so user must pick again
+    // BUT preserve any single-value attributes (like Rib=25mm for Interlocking)
     const handleMaterialSelect = (material: string) => {
       const newAttrs: Record<string, string> = { [materialAttrKey]: material };
+      // Re-apply auto-selected single-value attributes
+      for (const an of attrNames) {
+        if (an === materialAttrKey) continue;
+        const totalVals = variantAttributeOptions[an]?.values;
+        if (totalVals && totalVals.size === 1) {
+          newAttrs[an] = Array.from(totalVals)[0];
+        }
+      }
       setSelectedAttributes(newAttrs);
       setSelectedColour('');
     };
@@ -454,12 +766,14 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
     // Override handleAddToCart to include selectedColour
     const handleVariantAddToCart = () => {
       const hasColour = !!(selectedAttributes['Colour'] || selectedColour);
-      if (!hasColour && variantAttributeOptions['Colour']) {
+      // Require colour if variants have Colour attribute OR if material has multiple colours available
+      const colourRequired = variantAttributeOptions['Colour'] || (materialColours.length > 1);
+      if (!hasColour && colourRequired) {
         toast.error('Please select a colour');
         return;
       }
       if (!matchedVariant) {
-        if (!hasColour) {
+        if (!hasColour && colourRequired) {
           toast.error('Please select a colour');
         } else {
           toast.error('Please select all required options');
@@ -479,6 +793,10 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
       const hasLengthAttr = 'Length' in variantAttributeOptions;
       const isPerMetre = !!(isRoofSheet || product.pricingModel === 'per_metre');
       const unitPriceVal = matchedVariant.priceOverride!;
+      // Append colour code to SKU for products where colour isn't a variant attribute
+      const cartSku = colourVal && !hasColourInVariants
+        ? `${matchedVariant.sku}-${getColourCode(colourVal)}`
+        : matchedVariant.sku;
 
       if (isPerMetre && hasLengthAttr) {
         const userLen = parseFloat(selectedAttributes['_userLength'] || '') || 0;
@@ -502,7 +820,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
           _id: '',
           product: {
             _id: product._id, name: product.name, slug: product.slug,
-            sku: matchedVariant.sku,
+            sku: cartSku,
             images: product.images.map((i) => ({ url: i.url, alt: i.alt })),
           },
           selectedAttributes: attrEntries.filter(a => !a.attributeName.startsWith('_') && a.attributeName !== 'Length'),
@@ -520,7 +838,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
           _id: '',
           product: {
             _id: product._id, name: product.name, slug: product.slug,
-            sku: matchedVariant.sku,
+            sku: cartSku,
             images: product.images.map((i) => ({ url: i.url, alt: i.alt })),
           },
           selectedAttributes: attrEntries.filter(a => !a.attributeName.startsWith('_') && a.attributeName !== 'Length'),
@@ -552,7 +870,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
           _id: '',
           product: {
             _id: product._id, name: product.name, slug: product.slug,
-            sku: matchedVariant.sku,
+            sku: cartSku,
             images: product.images.map((i) => ({ url: i.url, alt: i.alt })),
           },
           selectedAttributes: cartAttrs,
@@ -787,11 +1105,26 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
           const availableValues = getAvailableValues(attrName);
           const selectedVal = selectedAttributes[attrName] || '';
           const totalValues = variantAttributeOptions[attrName]?.values;
-
-          // Hide if single value across ALL variants
-          if (totalValues && totalValues.size <= 1) return null;
-
           const isDim = isDimensionAttr(attrName);
+
+          // Show single-value attributes as pre-selected (non-interactive)
+          if (totalValues && totalValues.size === 1) {
+            const onlyVal = Array.from(totalValues)[0];
+            const displayVal = isDim ? `${codeToMm(onlyVal)}mm` : onlyVal;
+            return (
+              <div key={attrName}>
+                <label className="mb-2 block text-sm font-semibold text-steel-700">
+                  {attrName}
+                  <span className="ml-2 font-normal text-steel-500">— {displayVal}</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-4 py-2.5 rounded-lg text-sm font-medium border-2 border-brand-600 bg-brand-50 text-brand-700 shadow-sm">
+                    {displayVal}
+                  </span>
+                </div>
+              </div>
+            );
+          }
 
           // Length attribute — free input in metres for sheet products (roof sheets, polycarbonate, etc.)
           // Detect by: explicit per_metre pricing, roof-sheet category, or Length values > 1000 (i.e. stored in mm representing metres)
@@ -1040,9 +1373,16 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm text-green-600">
                     <Check className="h-4 w-4" />
-                    <span className="font-medium">SKU: {isPerMetre && userLen > 0 && matchedLenMetres > 0 && Math.abs(userLen - matchedLenMetres) > 0.01
-                      ? matchedVariant.sku.replace(String(matchedLenMetres), String(userLen))
-                      : matchedVariant.sku}</span>
+                    <span className="font-medium">SKU: {(() => {
+                      let sku = isPerMetre && userLen > 0 && matchedLenMetres > 0 && Math.abs(userLen - matchedLenMetres) > 0.01
+                        ? matchedVariant.sku.replace(String(matchedLenMetres), String(userLen))
+                        : matchedVariant.sku;
+                      const colVal = selectedColour || selectedAttributes['Colour'] || '';
+                      if (colVal && !hasColourInVariants) {
+                        sku += `-${getColourCode(colVal)}`;
+                      }
+                      return sku;
+                    })()}</span>
                   </div>
 
 

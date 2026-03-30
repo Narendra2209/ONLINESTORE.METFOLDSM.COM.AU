@@ -150,3 +150,116 @@
 .stagger-4 { animation-delay: 200ms; }
 .stagger-5 { animation-delay: 250ms; }
 .stagger-6 { animation-delay: 300ms; }
+
+/* 3D Architecture utilities */
+.perspective-scene { perspective: 1200px; perspective-origin: 50% 50%; }
+.preserve-3d { transform-style: preserve-3d; }
+.backface-hidden { backface-visibility: hidden; }
+
+@keyframes slow-rotate {
+  from { transform: rotateX(45deg) rotateZ(0deg); }
+  to { transform: rotateX(45deg) rotateZ(360deg); }
+}
+
+@keyframes float-3d {
+  0%, 100% { transform: translateZ(0px) translateY(0px); }
+  50% { transform: translateZ(20px) translateY(-10px); }
+}
+
+.animate-slow-rotate { animation: slow-rotate 20s linear infinite; }
+.animate-float-3d { animation: float-3d 6s ease-in-out infinite; }
+
+/* Aurora background effect */
+.aurora-bg {
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 40%, rgba(0, 116, 197, 0.3) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 40% at 80% 30%, rgba(240, 94, 6, 0.15) 0%, transparent 70%),
+    radial-gradient(ellipse 70% 60% at 50% 80%, rgba(12, 147, 231, 0.2) 0%, transparent 60%);
+  background-size: 200% 200%, 200% 200%, 200% 200%;
+  animation: aurora 15s ease infinite;
+}
+
+/* Light streak overlay */
+.light-streak {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.light-streak::before,
+.light-streak::after {
+  content: '';
+  position: absolute;
+  top: -20%;
+  width: 60%;
+  height: 140%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.03),
+    rgba(0, 116, 197, 0.08),
+    rgba(255, 255, 255, 0.03),
+    transparent
+  );
+  animation: light-streak 8s ease-in-out infinite;
+}
+
+.light-streak::after {
+  width: 40%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.02),
+    rgba(240, 94, 6, 0.06),
+    rgba(255, 255, 255, 0.02),
+    transparent
+  );
+  animation-delay: 3s;
+  animation-duration: 10s;
+}
+
+/* Hero glow orbs */
+.hero-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  animation: glow-pulse 4s ease-in-out infinite;
+}
+
+/* Smooth parallax depth */
+.depth-layer-1 { transform: translateZ(-50px) scale(1.05); }
+.depth-layer-2 { transform: translateZ(-100px) scale(1.1); }
+
+/* Product card 3D float */
+.card-3d-float {
+  transform-style: preserve-3d;
+  animation: card-float 6s ease-in-out infinite;
+}
+
+/* Slow reveal animations */
+.reveal-slow {
+  opacity: 0;
+  transform: translateY(40px);
+  animation: slide-up-slow 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.reveal-delay-1 { animation-delay: 0.2s; }
+.reveal-delay-2 { animation-delay: 0.4s; }
+.reveal-delay-3 { animation-delay: 0.6s; }
+.reveal-delay-4 { animation-delay: 0.8s; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .perspective-scene { perspective: none; }
+  .preserve-3d { transform-style: flat; }
+  .animate-slow-rotate, .animate-float-3d, .animate-float, .animate-float-delayed,
+  .aurora-bg, .light-streak::before, .light-streak::after, .hero-glow,
+  .card-3d-float, .reveal-slow {
+    animation: none;
+  }
+  .reveal-slow { opacity: 1; transform: none; }
+}

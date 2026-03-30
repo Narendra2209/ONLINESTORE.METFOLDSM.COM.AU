@@ -2,108 +2,165 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { motion, useInView, useScroll, useTransform } from 'framer-motion';
+import { motion, useInView, useScroll, useTransform, useMotionValue, useSpring, animate } from 'framer-motion';
 import {
   ArrowRight,
-  Shield,
-  Truck,
-  Headphones,
-  Award,
-  ChevronRight,
-  Layers,
-  Droplets,
-  Wrench,
-  PipetteIcon,
-  Hammer,
-  Package,
+  ChevronDown,
   Zap,
+  Wrench,
+  HelpCircle,
+  Truck,
+  MousePointer,
+  Ruler,
+  Calculator,
+  ShoppingCart,
+  Layers,
 } from 'lucide-react';
+import Tilt3DCard from '@/components/ui/Tilt3DCard';
 
-const categories = [
-  { name: 'Roofing', slug: 'roofing', description: 'Roof sheets, accessories & polycarbonate', icon: Layers, color: 'from-blue-500 to-blue-700' },
-  { name: 'Cladding', slug: 'cladding', description: 'Wall cladding panels & accessories', icon: Package, color: 'from-steel-600 to-steel-800' },
-  { name: 'Fascia & Gutter', slug: 'fascia-gutter', description: 'Guttering, fascia boards & fittings', icon: Wrench, color: 'from-brand-500 to-brand-700' },
-  { name: 'Downpipe', slug: 'downpipe', description: 'Downpipes, clips, offsets & pops', icon: PipetteIcon, color: 'from-teal-500 to-teal-700' },
-  { name: 'Flashing', slug: 'flashing', description: 'Roof & wall flashing products', icon: Zap, color: 'from-orange-500 to-orange-700' },
-  { name: 'Rainwater Goods', slug: 'rainwater-goods', description: 'Rainheads, sumps & dambuster products', icon: Droplets, color: 'from-cyan-500 to-cyan-700' },
-  { name: 'Accessories', slug: 'accessories', description: 'Screws, insulation & fixings', icon: Hammer, color: 'from-amber-500 to-amber-700' },
-];
-
-const features = [
-  { icon: Shield, title: 'Quality Guaranteed', description: 'Premium Australian-standard materials with manufacturer warranties', color: 'bg-blue-500' },
-  { icon: Truck, title: 'Fast Delivery', description: 'Reliable shipping across Australia with real-time tracking', color: 'bg-emerald-500' },
-  { icon: Headphones, title: 'Expert Support', description: 'Trade-experienced team ready to help with your project', color: 'bg-violet-500' },
-  { icon: Award, title: 'Trade Pricing', description: 'Competitive rates and volume discounts for trade accounts', color: 'bg-amber-500' },
-];
-
-const stats = [
-  { value: 500, suffix: '+', label: 'Products Available' },
-  { value: 22, suffix: '', label: 'Colorbond Colours' },
-  { value: 15, suffix: '+', label: 'Years Experience' },
-  { value: 98, suffix: '%', label: 'Customer Satisfaction' },
-];
-
-// Animated counter component
-function AnimatedCounter({ value, suffix }: { value: number; suffix: string }) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true, margin: '-50px' });
-
-  useEffect(() => {
-    if (!isInView) return;
-    const duration = 2000;
-    const steps = 60;
-    const increment = value / steps;
-    let current = 0;
-    const timer = setInterval(() => {
-      current += increment;
-      if (current >= value) {
-        setCount(value);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(current));
-      }
-    }, duration / steps);
-    return () => clearInterval(timer);
-  }, [isInView, value]);
-
-  return (
-    <span ref={ref}>
-      {count}
-      {suffix}
-    </span>
-  );
-}
-
-// Shared easing
+// Smooth easing
 const smoothEase: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
-// Stagger container variants
-const containerVariants = {
+// Slow motion entrance variants
+const slowReveal = {
+  hidden: { opacity: 0, y: 60 },
+  visible: (delay: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 1.2, delay, ease: smoothEase },
+  }),
+};
+
+const slowScale = {
+  hidden: { opacity: 0, scale: 0.85 },
+  visible: (delay: number) => ({
+    opacity: 1,
+    scale: 1,
+    transition: { duration: 1.0, delay, ease: smoothEase },
+  }),
+};
+
+const staggerContainer = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.1, delayChildren: 0.1 },
+    transition: { staggerChildren: 0.15, delayChildren: 0.3 },
   },
 };
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 30 },
+const staggerItem = {
+  hidden: { opacity: 0, y: 40 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, ease: smoothEase },
+    transition: { duration: 0.8, ease: smoothEase },
   },
 };
 
-const scaleItemVariants = {
-  hidden: { opacity: 0, scale: 0.9 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    transition: { duration: 0.5, ease: smoothEase },
-  },
-};
+// Popular products data
+const popularProducts = [
+  { name: 'Flashings', slug: 'flashing', icon: '⚡', gradient: 'from-steel-700 to-steel-800' },
+  { name: 'Downpipes', slug: 'downpipe', icon: '🔧', gradient: 'from-steel-600 to-steel-700' },
+  { name: 'Rainheads', slug: 'rainwater-goods', icon: '💧', gradient: 'from-steel-700 to-steel-800' },
+  { name: 'Laveline', slug: 'fascia-gutter', icon: '📐', gradient: 'from-steel-600 to-steel-700' },
+  { name: 'Fascia & Gutter Accessories', slug: 'fascia-gutter', icon: '🔩', gradient: 'from-steel-700 to-steel-800' },
+  { name: 'Ridge Capping', slug: 'roofing', icon: '🏠', gradient: 'from-steel-600 to-steel-700' },
+];
+
+// How it works steps
+const howItWorks = [
+  { icon: MousePointer, title: 'Choose', description: 'Select your product type and style' },
+  { icon: Ruler, title: 'Dimensions', description: 'Enter your exact measurements' },
+  { icon: Calculator, title: 'Get Instant Quote', description: 'See live pricing immediately' },
+  { icon: ShoppingCart, title: 'Order', description: 'Add to cart and checkout' },
+];
+
+// Why choose us features
+const whyChoose = [
+  { icon: Zap, title: 'Same-day manufacturing', color: 'bg-amber-500', iconColor: 'text-white' },
+  { icon: Wrench, title: 'Custom flashings made to size.', color: 'bg-brand-600', iconColor: 'text-white' },
+  { icon: HelpCircle, title: 'Live pricing – no waiting for quotes', color: 'bg-rose-500', iconColor: 'text-white' },
+  { icon: Truck, title: 'Fast delivery across Australia', color: 'bg-brand-500', iconColor: 'text-white' },
+];
+
+// Floating particle component
+function FloatingParticle({ delay, x, y, size }: { delay: number; x: string; y: string; size: number }) {
+  return (
+    <motion.div
+      className="absolute rounded-full bg-white/20"
+      style={{ left: x, top: y, width: size, height: size }}
+      animate={{
+        y: [0, -30, 0],
+        opacity: [0, 0.6, 0],
+        scale: [0.5, 1, 0.5],
+      }}
+      transition={{
+        duration: 4 + Math.random() * 3,
+        delay,
+        repeat: Infinity,
+        ease: 'easeInOut',
+      }}
+    />
+  );
+}
+
+// 3D Metal Sheet SVG component
+function MetalSheetRender() {
+  return (
+    <motion.div
+      className="relative w-full h-full"
+      animate={{ rotateY: [0, 5, 0, -5, 0], rotateX: [0, -3, 0, 3, 0] }}
+      transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+      style={{ transformStyle: 'preserve-3d', perspective: 800 }}
+    >
+      <svg viewBox="0 0 400 250" className="w-full h-auto drop-shadow-2xl" style={{ filter: 'drop-shadow(0 25px 50px rgba(0,0,0,0.4))' }}>
+        <defs>
+          <linearGradient id="metalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#4a5568" />
+            <stop offset="30%" stopColor="#2d3748" />
+            <stop offset="60%" stopColor="#4a5568" />
+            <stop offset="100%" stopColor="#1a202c" />
+          </linearGradient>
+          <linearGradient id="ribHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#718096" />
+            <stop offset="50%" stopColor="#4a5568" />
+            <stop offset="100%" stopColor="#2d3748" />
+          </linearGradient>
+          <filter id="shadow">
+            <feDropShadow dx="0" dy="8" stdDeviation="6" floodOpacity="0.3" />
+          </filter>
+        </defs>
+        {/* Main sheet body */}
+        <path d="M 30 60 L 370 40 L 380 200 L 20 220 Z" fill="url(#metalGrad)" filter="url(#shadow)" />
+        {/* Ribs */}
+        {[0, 1, 2, 3, 4].map((i) => {
+          const x1 = 65 + i * 65;
+          const x2 = x1 + 2;
+          return (
+            <g key={i}>
+              <path
+                d={`M ${x1} ${56 - i * 0.5} L ${x1 - 3} ${56 - i * 0.5 - 12} L ${x2 + 3} ${56 - i * 0.5 - 12} L ${x2} ${56 - i * 0.5} M ${x1 - 1} ${216 + i * 0.5} L ${x1 - 4} ${216 + i * 0.5 - 12} L ${x2 + 4} ${216 + i * 0.5 - 12} L ${x2 + 1} ${216 + i * 0.5}`}
+                fill="url(#ribHighlight)"
+              />
+              <line
+                x1={x1}
+                y1={56 - i * 0.5}
+                x2={x1 - 1}
+                y2={216 + i * 0.5}
+                stroke="#718096"
+                strokeWidth="1.5"
+                opacity="0.5"
+              />
+            </g>
+          );
+        })}
+        {/* Edge highlight */}
+        <path d="M 30 60 L 370 40" stroke="#a0aec0" strokeWidth="1" opacity="0.6" fill="none" />
+        <path d="M 20 220 L 380 200" stroke="#1a202c" strokeWidth="1" opacity="0.4" fill="none" />
+      </svg>
+    </motion.div>
+  );
+}
 
 export default function HomePage() {
   const heroRef = useRef<HTMLElement>(null);
@@ -111,163 +168,185 @@ export default function HomePage() {
     target: heroRef,
     offset: ['start start', 'end start'],
   });
-  const heroY = useTransform(scrollYProgress, [0, 1], ['0%', '30%']);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+  const heroY = useTransform(scrollYProgress, [0, 1], ['0%', '40%']);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
+  const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.95]);
 
   return (
     <>
-      {/* Hero Section */}
-      <section ref={heroRef} className="relative min-h-[90vh] flex items-center overflow-hidden bg-steel-950">
-        {/* Animated background gradient */}
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-steel-950 via-steel-900 to-brand-950" />
-          {/* Animated grid */}
-          <motion.div
-            style={{ y: heroY }}
-            className="absolute inset-0 opacity-[0.04]"
-          >
-            <div className="h-full w-full" style={{
-              backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)',
-              backgroundSize: '60px 60px',
-            }} />
-          </motion.div>
-          {/* Floating gradient orbs */}
-          <div className="absolute top-20 right-[20%] h-[500px] w-[500px] rounded-full bg-brand-600/10 blur-[120px] animate-float" />
-          <div className="absolute bottom-20 left-[10%] h-[400px] w-[400px] rounded-full bg-brand-400/8 blur-[100px] animate-float-delayed" />
-          <div className="absolute top-1/2 right-[5%] h-[300px] w-[300px] rounded-full bg-accent-500/5 blur-[80px] animate-float" />
+      {/* ====== HERO SECTION ====== */}
+      <section ref={heroRef} className="relative min-h-[100vh] flex items-center overflow-hidden bg-steel-950">
+        {/* Aurora background */}
+        <div className="absolute inset-0 aurora-bg" />
+
+        {/* Animated light streaks */}
+        <div className="light-streak" />
+
+        {/* Glow orbs */}
+        <div className="hero-glow absolute top-[10%] right-[15%] w-[500px] h-[500px] bg-brand-600/15" />
+        <div className="hero-glow absolute bottom-[20%] left-[5%] w-[400px] h-[400px] bg-brand-400/10" style={{ animationDelay: '2s' }} />
+        <div className="hero-glow absolute top-[50%] right-[30%] w-[300px] h-[300px] bg-accent-500/8" style={{ animationDelay: '4s' }} />
+
+        {/* Animated grid overlay */}
+        <motion.div style={{ y: heroY }} className="absolute inset-0 opacity-[0.03]">
+          <div className="h-full w-full" style={{
+            backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)',
+            backgroundSize: '80px 80px',
+          }} />
+        </motion.div>
+
+        {/* Floating particles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <FloatingParticle delay={0} x="10%" y="20%" size={3} />
+          <FloatingParticle delay={1.5} x="25%" y="60%" size={2} />
+          <FloatingParticle delay={0.8} x="45%" y="30%" size={4} />
+          <FloatingParticle delay={2.2} x="70%" y="70%" size={2} />
+          <FloatingParticle delay={3} x="85%" y="15%" size={3} />
+          <FloatingParticle delay={1} x="60%" y="50%" size={2} />
+          <FloatingParticle delay={2.8} x="35%" y="80%" size={3} />
+          <FloatingParticle delay={0.5} x="90%" y="45%" size={2} />
         </div>
 
-        <motion.div style={{ opacity: heroOpacity }} className="container-main relative z-10 py-12 sm:py-16 lg:py-28">
-          <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 items-center">
-            {/* Text content */}
-            <motion.div
-              initial={{ opacity: 0, x: -40 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, ease: smoothEase }}
-            >
+        <motion.div style={{ opacity: heroOpacity, scale: heroScale }} className="container-main relative z-10 py-16 lg:py-28">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left: Text content */}
+            <div>
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.6 }}
-                className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 px-4 py-1.5 text-sm text-brand-300 mb-6"
+                variants={slowReveal}
+                initial="hidden"
+                animate="visible"
+                custom={0.1}
+                className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md border border-white/10 px-4 py-2 text-sm text-brand-300 mb-8"
               >
-                <span className="h-2 w-2 rounded-full bg-brand-400 animate-pulse" />
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                 Now accepting online orders
               </motion.div>
 
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white lg:text-5xl xl:text-6xl">
-                <motion.span
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3, duration: 0.6 }}
-                  className="block"
-                >
-                  Industrial Roofing &
-                </motion.span>
-                <motion.span
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4, duration: 0.6 }}
-                  className="block mt-1"
-                >
-                  <span className="relative">
-                    <span className="relative z-10 bg-gradient-to-r from-brand-300 via-brand-400 to-accent-400 bg-clip-text text-transparent">
-                      Sheet Metal
-                    </span>
-                  </span>{' '}
-                  Supplies
-                </motion.span>
-              </h1>
+              <motion.h1
+                variants={slowReveal}
+                initial="hidden"
+                animate="visible"
+                custom={0.3}
+                className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight text-white leading-[1.1]"
+              >
+                Fast Online Ordering for{' '}
+                <span className="relative inline-block">
+                  <span className="bg-gradient-to-r from-brand-300 via-brand-400 to-accent-400 bg-clip-text text-transparent">
+                    Roofing & Sheet Metal
+                  </span>
+                  <motion.span
+                    className="absolute -bottom-2 left-0 right-0 h-[3px] bg-gradient-to-r from-brand-400 to-accent-400 rounded-full"
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{ delay: 1.2, duration: 0.8, ease: smoothEase }}
+                  />
+                </span>
+              </motion.h1>
 
               <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.6 }}
-                className="mt-4 sm:mt-6 text-base sm:text-lg text-steel-300 leading-relaxed max-w-xl"
+                variants={slowReveal}
+                initial="hidden"
+                animate="visible"
+                custom={0.5}
+                className="mt-6 text-lg sm:text-xl text-steel-300 leading-relaxed"
               >
-                Premium Colorbond roofing, cladding, rainwater goods and accessories.
-                Configure your products online with{' '}
-                <span className="text-white font-medium">live pricing</span> and
-                instant quotes.
+                Live Pricing &bull; Instant Quotes &bull; Australia-Wide Delivery
               </motion.p>
 
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6, duration: 0.6 }}
-                className="mt-8 flex flex-wrap gap-4"
+                variants={slowReveal}
+                initial="hidden"
+                animate="visible"
+                custom={0.7}
+                className="mt-10 flex flex-wrap gap-4"
               >
                 <Link
                   href="/products"
-                  className="group relative inline-flex items-center gap-2 rounded-xl bg-brand-600 px-7 py-3.5 text-sm font-semibold text-white overflow-hidden transition-all hover:shadow-lg hover:shadow-brand-600/25"
+                  className="group relative inline-flex items-center gap-2 rounded-xl bg-brand-600 px-8 py-4 text-sm font-semibold text-white overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-brand-600/30 btn-shine"
                 >
                   <span className="absolute inset-0 bg-gradient-to-r from-brand-600 to-brand-500 transition-opacity group-hover:opacity-0" />
                   <span className="absolute inset-0 bg-gradient-to-r from-brand-500 to-brand-400 opacity-0 transition-opacity group-hover:opacity-100" />
                   <span className="relative">Browse Products</span>
-                  <ArrowRight className="relative h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  <ArrowRight className="relative h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                 </Link>
                 <Link
                   href="/contact"
-                  className="group inline-flex items-center gap-2 rounded-xl border-2 border-white/15 backdrop-blur-sm px-7 py-3.5 text-sm font-semibold text-white hover:bg-white/10 hover:border-white/25 transition-all"
+                  className="group inline-flex items-center gap-2 rounded-xl border-2 border-white/15 backdrop-blur-sm px-8 py-4 text-sm font-semibold text-white hover:bg-white/10 hover:border-white/25 transition-all duration-300"
                 >
                   Get a Quote
-                  <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  <ChevronDown className="h-4 w-4 transition-transform duration-300 group-hover:translate-y-0.5" />
                 </Link>
               </motion.div>
-            </motion.div>
+            </div>
 
-            {/* Right side - floating product cards */}
+            {/* Right: 3D Product Card + Metal Sheet */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.5, duration: 0.8, ease: smoothEase }}
+              variants={slowScale}
+              initial="hidden"
+              animate="visible"
+              custom={0.6}
               className="hidden lg:block relative"
             >
-              <div className="relative h-[450px]">
-                {/* Main card */}
+              <div className="relative h-[500px]" style={{ perspective: 1200 }}>
+                {/* 3D Metal sheet render behind card */}
                 <motion.div
-                  animate={{ y: [0, -10, 0] }}
-                  transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-                  className="absolute top-8 left-8 right-8 rounded-2xl bg-white/[0.08] backdrop-blur-xl border border-white/10 p-6 shadow-2xl"
+                  className="absolute -top-4 -left-12 w-[350px] h-[220px] opacity-60"
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
                 >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center">
-                      <Layers className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <div className="text-white font-semibold">5-Ribsheet</div>
-                      <div className="text-steel-400 text-xs">Configurable Product</div>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-steel-400">Finish</span>
-                      <span className="text-white bg-white/10 px-3 py-1 rounded-md text-xs">Colorbond</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-steel-400">Colour</span>
-                      <div className="flex items-center gap-2">
-                        <span className="h-4 w-4 rounded-full bg-[#3B3F3F] border border-white/20" />
-                        <span className="text-white text-xs">Monument</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-steel-400">Thickness</span>
-                      <span className="text-white bg-white/10 px-3 py-1 rounded-md text-xs">0.42mm</span>
-                    </div>
-                    <div className="h-px bg-white/10 my-2" />
-                    <div className="flex items-center justify-between">
-                      <span className="text-steel-400 text-sm">Price</span>
-                      <span className="text-xl font-bold text-brand-400">$14.50<span className="text-sm font-normal text-steel-400">/m</span></span>
-                    </div>
-                  </div>
+                  <MetalSheetRender />
                 </motion.div>
 
-                {/* Floating colour swatches */}
+                {/* Main configurator card with Tilt3D */}
+                <div className="absolute top-6 right-0 w-[320px]">
+                  <Tilt3DCard maxTilt={6} glare>
+                    <motion.div
+                      animate={{ y: [0, -8, 0] }}
+                      transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+                      className="rounded-2xl bg-white/[0.1] backdrop-blur-xl border border-white/15 p-6 shadow-2xl"
+                    >
+                      <div className="flex items-center gap-3 mb-5">
+                        <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center shadow-lg">
+                          <Layers className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <div className="text-white font-semibold text-base">5-Ribsheet</div>
+                          <div className="text-steel-400 text-xs">Configurable Product</div>
+                        </div>
+                      </div>
+                      <div className="space-y-3.5">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-steel-400">Finish</span>
+                          <span className="text-white bg-white/10 px-4 py-1.5 rounded-lg text-xs font-medium">Colorbond</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-steel-400">Colour</span>
+                          <div className="flex items-center gap-2">
+                            <span className="h-5 w-5 rounded-full bg-[#3B3F3F] border-2 border-white/20 shadow-inner" />
+                            <span className="text-white text-xs font-medium">Monument</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-steel-400">Thickness</span>
+                          <span className="text-white bg-white/10 px-4 py-1.5 rounded-lg text-xs font-medium">0.42mm</span>
+                        </div>
+                        <div className="h-px bg-white/10 my-3" />
+                        <div className="flex items-center justify-between">
+                          <span className="text-steel-400 text-sm">Price</span>
+                          <span className="text-2xl font-bold text-brand-400">
+                            $14.50<span className="text-sm font-normal text-steel-400">/m</span>
+                          </span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </Tilt3DCard>
+                </div>
+
+                {/* Floating colour swatches card */}
                 <motion.div
-                  animate={{ y: [0, -8, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-                  className="absolute bottom-12 left-0 rounded-xl bg-white/[0.08] backdrop-blur-xl border border-white/10 p-4 shadow-xl"
+                  animate={{ y: [0, -10, 0] }}
+                  transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: 1.5 }}
+                  className="absolute bottom-16 left-4 rounded-xl bg-white/[0.08] backdrop-blur-xl border border-white/10 p-4 shadow-xl"
                 >
                   <div className="text-xs text-steel-400 mb-2">Popular Colours</div>
                   <div className="flex gap-2">
@@ -280,7 +359,7 @@ export default function HomePage() {
                     ].map((c) => (
                       <div key={c.name} className="group/swatch relative">
                         <div
-                          className="h-8 w-8 rounded-lg border border-white/20 cursor-pointer transition-transform hover:scale-110"
+                          className="h-8 w-8 rounded-lg border border-white/20 cursor-pointer transition-transform duration-200 hover:scale-110"
                           style={{ backgroundColor: c.color }}
                         />
                       </div>
@@ -288,11 +367,11 @@ export default function HomePage() {
                   </div>
                 </motion.div>
 
-                {/* Floating stats badge */}
+                {/* Floating delivery badge */}
                 <motion.div
                   animate={{ y: [0, -6, 0] }}
                   transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
-                  className="absolute bottom-8 right-4 rounded-xl bg-white/[0.08] backdrop-blur-xl border border-white/10 px-4 py-3 shadow-xl"
+                  className="absolute bottom-4 right-8 rounded-xl bg-white/[0.08] backdrop-blur-xl border border-white/10 px-4 py-3 shadow-xl"
                 >
                   <div className="flex items-center gap-2">
                     <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
@@ -310,193 +389,134 @@ export default function HomePage() {
         </motion.div>
 
         {/* Bottom gradient fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-white to-transparent" />
       </section>
 
-      {/* Stats Section */}
-      <section className="relative -mt-16 z-20">
+      {/* ====== WHY CHOOSE + POPULAR PRODUCTS ====== */}
+      <section className="py-16 lg:py-24 bg-white">
         <div className="container-main">
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-50px' }}
-            className="grid grid-cols-2 lg:grid-cols-4 gap-4"
-          >
-            {stats.map((stat) => (
-              <motion.div
-                key={stat.label}
-                variants={scaleItemVariants}
-                className="relative group rounded-2xl bg-white p-6 shadow-lg shadow-steel-200/50 border border-steel-100 text-center hover:shadow-xl transition-shadow"
-              >
-                <div className="text-3xl font-bold text-steel-900 lg:text-4xl">
-                  <AnimatedCounter value={stat.value} suffix={stat.suffix} />
-                </div>
-                <div className="mt-1 text-sm text-steel-500">{stat.label}</div>
-                <div className="absolute inset-x-0 bottom-0 h-1 rounded-b-2xl bg-gradient-to-r from-brand-400 to-brand-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Categories Grid */}
-      <section className="py-20 lg:py-28 bg-white">
-        <div className="container-main">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-12"
-          >
-            <span className="inline-block text-sm font-semibold text-brand-600 tracking-wider uppercase mb-2">
-              Our Range
-            </span>
-            <h2 className="text-3xl font-bold text-steel-900 lg:text-4xl">
-              Shop by Category
-            </h2>
-            <p className="mt-3 text-steel-500 max-w-lg mx-auto">
-              Everything you need for your roofing and cladding project, from premium sheets to finishing accessories
-            </p>
-          </motion.div>
-
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-50px' }}
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
-          >
-            {categories.map((category) => (
-              <motion.div key={category.slug} variants={itemVariants}>
-                <Link
-                  href={`/categories/${category.slug}`}
-                  className="group relative flex items-center gap-5 rounded-2xl bg-white p-6 border border-steel-100 hover:border-steel-200 transition-all duration-300 hover:shadow-lg hover:shadow-steel-100/80 overflow-hidden"
-                >
-                  {/* Hover gradient bg */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-steel-50/0 to-brand-50/0 group-hover:from-steel-50/50 group-hover:to-brand-50/30 transition-all duration-500" />
-
-                  <div className={`relative flex-shrink-0 h-14 w-14 rounded-xl bg-gradient-to-br ${category.color} flex items-center justify-center shadow-lg transition-transform duration-300 group-hover:scale-110`}>
-                    <category.icon className="h-6 w-6 text-white" />
-                  </div>
-
-                  <div className="relative flex-1 min-w-0">
-                    <h3 className="font-semibold text-steel-900 group-hover:text-brand-600 transition-colors duration-300">
-                      {category.name}
-                    </h3>
-                    <p className="text-sm text-steel-500 mt-0.5">{category.description}</p>
-                  </div>
-
-                  <div className="relative flex-shrink-0">
-                    <div className="h-8 w-8 rounded-full bg-steel-50 group-hover:bg-brand-50 flex items-center justify-center transition-all duration-300">
-                      <ArrowRight className="h-4 w-4 text-steel-300 group-hover:text-brand-500 transition-all duration-300 group-hover:translate-x-0.5" />
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16">
+            {/* Left: Why Customers Choose Metfold */}
+            <motion.div
+              initial={{ opacity: 0, x: -40 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.9, ease: smoothEase }}
+            >
+              <h2 className="text-2xl sm:text-3xl font-bold text-steel-900 mb-8">
+                Why Customers Choose Metfold
+              </h2>
+              <div className="grid grid-cols-2 gap-4">
+                {whyChoose.map((item, i) => (
+                  <motion.div
+                    key={item.title}
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.15, duration: 0.7, ease: smoothEase }}
+                    whileHover={{ y: -4, transition: { duration: 0.3 } }}
+                    className="group rounded-2xl bg-steel-50 border border-steel-100 p-5 hover:shadow-lg hover:border-steel-200 transition-shadow duration-300"
+                  >
+                    <div className={`h-10 w-10 rounded-xl ${item.color} flex items-center justify-center mb-3 shadow-md transition-transform duration-300 group-hover:scale-110`}>
+                      <item.icon className={`h-5 w-5 ${item.iconColor}`} />
                     </div>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
-          </motion.div>
+                    <p className="text-sm font-semibold text-steel-800 leading-snug">{item.title}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Right: Popular Products */}
+            <motion.div
+              initial={{ opacity: 0, x: 40 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.9, ease: smoothEase }}
+            >
+              <h2 className="text-2xl sm:text-3xl font-bold text-steel-900 mb-8">
+                Popular Products
+              </h2>
+              <div className="grid grid-cols-3 gap-4">
+                {popularProducts.map((product, i) => (
+                  <motion.div
+                    key={product.name}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1, duration: 0.6, ease: smoothEase }}
+                  >
+                    <Link
+                      href={`/categories/${product.slug}`}
+                      className="group block rounded-2xl bg-steel-50 border border-steel-100 p-4 text-center hover:shadow-lg hover:border-steel-200 transition-all duration-300"
+                    >
+                      <div className={`mx-auto h-20 w-20 rounded-xl bg-gradient-to-br ${product.gradient} flex items-center justify-center mb-3 shadow-md transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3`}>
+                        <span className="text-2xl">{product.icon}</span>
+                      </div>
+                      <p className="text-xs sm:text-sm font-medium text-steel-700 group-hover:text-brand-600 transition-colors duration-300 leading-tight">
+                        {product.name}
+                      </p>
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-20 lg:py-28 bg-steel-50">
+      {/* ====== HOW IT WORKS ====== */}
+      <section className="py-16 lg:py-24 bg-steel-50">
         <div className="container-main">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.8, ease: smoothEase }}
             className="text-center mb-14"
           >
-            <span className="inline-block text-sm font-semibold text-brand-600 tracking-wider uppercase mb-2">
-              Why Choose Us
-            </span>
-            <h2 className="text-3xl font-bold text-steel-900 lg:text-4xl">
-              Built for the Trade
-            </h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-steel-900">How It Works</h2>
             <p className="mt-3 text-steel-500 max-w-lg mx-auto">
-              We understand what matters to builders, roofers, and contractors
+              Order custom roofing and sheet metal products in four simple steps
             </p>
           </motion.div>
 
           <motion.div
-            variants={containerVariants}
+            variants={staggerContainer}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-50px' }}
-            className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
+            className="grid grid-cols-2 sm:grid-cols-4 gap-6 lg:gap-8"
           >
-            {features.map((feature) => (
+            {howItWorks.map((step, i) => (
               <motion.div
-                key={feature.title}
-                variants={itemVariants}
-                whileHover={{ y: -5 }}
-                className="group relative rounded-2xl bg-white p-8 border border-steel-100 text-center transition-shadow duration-300 hover:shadow-xl hover:shadow-steel-200/50"
+                key={step.title}
+                variants={staggerItem}
+                whileHover={{ y: -6, transition: { duration: 0.3 } }}
+                className="group relative text-center"
               >
-                <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-2xl ${feature.color} shadow-lg transition-transform duration-300 group-hover:scale-110`}>
-                  <feature.icon className="h-6 w-6 text-white" />
+                <div className="mx-auto h-20 w-20 rounded-2xl bg-white border border-steel-100 shadow-lg flex items-center justify-center mb-4 transition-all duration-500 group-hover:shadow-xl group-hover:border-brand-200 group-hover:bg-brand-50">
+                  <step.icon className="h-8 w-8 text-steel-400 group-hover:text-brand-600 transition-colors duration-300" />
                 </div>
-                <h3 className="mt-5 text-lg font-semibold text-steel-900">{feature.title}</h3>
-                <p className="mt-2 text-sm text-steel-500 leading-relaxed">{feature.description}</p>
-                <div className="absolute inset-x-0 bottom-0 h-1 rounded-b-2xl bg-gradient-to-r from-brand-400 to-brand-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute -top-2 -right-2 sm:right-0 h-7 w-7 rounded-full bg-brand-600 text-white text-xs font-bold flex items-center justify-center shadow-md">
+                  {i + 1}
+                </div>
+                <h3 className="text-base font-semibold text-steel-900 mb-1">{step.title}</h3>
+                <p className="text-xs text-steel-500 leading-relaxed">{step.description}</p>
+
+                {/* Connector line */}
+                {i < howItWorks.length - 1 && (
+                  <div className="hidden sm:block absolute top-10 -right-4 lg:-right-5 w-8 lg:w-10">
+                    <div className="h-px bg-steel-200 w-full" />
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-steel-300" />
+                  </div>
+                )}
               </motion.div>
             ))}
           </motion.div>
         </div>
       </section>
 
-      {/* How It Works */}
-      <section className="py-20 lg:py-28 bg-white">
-        <div className="container-main">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-14"
-          >
-            <span className="inline-block text-sm font-semibold text-brand-600 tracking-wider uppercase mb-2">
-              Simple Process
-            </span>
-            <h2 className="text-3xl font-bold text-steel-900 lg:text-4xl">
-              How It Works
-            </h2>
-          </motion.div>
-
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-50px' }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8 relative"
-          >
-            {/* Connecting line */}
-            <div className="hidden md:block absolute top-16 left-[20%] right-[20%] h-px bg-gradient-to-r from-transparent via-steel-200 to-transparent" />
-
-            {[
-              { step: '01', title: 'Choose Product', description: 'Browse our range and select from roof sheets, cladding, guttering and more' },
-              { step: '02', title: 'Configure & Price', description: 'Pick your finish, colour, thickness and length. See live pricing instantly' },
-              { step: '03', title: 'Order & Deliver', description: 'Checkout online or request a quote. We cut to length and deliver to your site' },
-            ].map((item) => (
-              <motion.div
-                key={item.step}
-                variants={itemVariants}
-                className="relative text-center"
-              >
-                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 shadow-lg shadow-brand-500/25">
-                  <span className="text-xl font-bold text-white">{item.step}</span>
-                </div>
-                <h3 className="text-lg font-semibold text-steel-900">{item.title}</h3>
-                <p className="mt-2 text-sm text-steel-500 max-w-xs mx-auto leading-relaxed">{item.description}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Colour Showcase Banner */}
+      {/* ====== COLOUR RANGE ====== */}
       <section className="relative py-20 overflow-hidden bg-steel-900">
         <div className="absolute inset-0 opacity-20">
           <div className="absolute inset-0" style={{
@@ -508,12 +528,10 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.8 }}
             className="text-center mb-10"
           >
-            <h2 className="text-3xl font-bold text-white lg:text-4xl">
-              Full Colorbond Colour Range
-            </h2>
+            <h2 className="text-3xl font-bold text-white lg:text-4xl">Full Colorbond Colour Range</h2>
             <p className="mt-3 text-steel-400 max-w-lg mx-auto">
               All 22 standard Colorbond colours plus Matt, Ultra, Galvanised and Zinc finishes
             </p>
@@ -588,7 +606,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* ====== CTA SECTION ====== */}
       <section className="relative py-20 lg:py-28 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-brand-600 via-brand-700 to-brand-800" />
         <div className="absolute inset-0 opacity-10">
@@ -598,27 +616,14 @@ export default function HomePage() {
         </div>
 
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.7 }}
+          transition={{ duration: 0.9, ease: smoothEase }}
           className="container-main relative z-10 text-center"
         >
           <div className="mx-auto max-w-2xl">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1, duration: 0.5 }}
-              className="inline-flex items-center gap-2 rounded-full bg-white/15 backdrop-blur-sm px-4 py-1.5 text-sm text-white/90 mb-6"
-            >
-              <Award className="h-4 w-4" />
-              Exclusive Trade Benefits
-            </motion.div>
-
-            <h2 className="text-3xl font-bold text-white lg:text-4xl">
-              Are You a Trade Customer?
-            </h2>
+            <h2 className="text-3xl font-bold text-white lg:text-4xl">Are You a Trade Customer?</h2>
             <p className="mt-4 text-lg text-brand-100 leading-relaxed">
               Register for a trade account to unlock exclusive pricing, volume discounts,
               and priority delivery for your business.
@@ -627,10 +632,8 @@ export default function HomePage() {
             <div className="mt-8 flex flex-wrap justify-center gap-4">
               <Link
                 href="/register"
-                className="group relative inline-flex items-center gap-2 rounded-xl bg-white px-8 py-4 text-sm font-semibold text-brand-600 overflow-hidden transition-all hover:shadow-xl hover:shadow-brand-900/20"
+                className="group relative inline-flex items-center gap-2 rounded-xl bg-white px-8 py-4 text-sm font-semibold text-brand-600 overflow-hidden transition-all hover:shadow-xl hover:shadow-brand-900/20 btn-shine"
               >
-                <span className="absolute inset-0 bg-white transition-opacity group-hover:opacity-0" />
-                <span className="absolute inset-0 bg-gradient-to-r from-white to-brand-50 opacity-0 transition-opacity group-hover:opacity-100" />
                 <span className="relative">Apply for Trade Account</span>
                 <ArrowRight className="relative h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>

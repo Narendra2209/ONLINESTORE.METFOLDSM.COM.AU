@@ -11,7 +11,7 @@ import Breadcrumb from '@/components/ui/Breadcrumb';
 import Badge from '@/components/ui/Badge';
 import Skeleton from '@/components/ui/Skeleton';
 import { cn } from '@/lib/utils';
-import { Package, FileText, Truck, Shield, ZoomIn, Upload, Loader2 } from 'lucide-react';
+import { Package, FileText, Truck, Shield, ZoomIn, Upload, Loader2, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function ProductDetailPage() {
@@ -186,9 +186,20 @@ export default function ProductDetailPage() {
               {product.isFeatured && <Badge variant="warning">Featured</Badge>}
             </div>
 
-            <h1 className="text-xl sm:text-2xl font-bold text-steel-900 lg:text-3xl tracking-tight leading-tight">
-              {product.name}
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl sm:text-2xl font-bold text-steel-900 lg:text-3xl tracking-tight leading-tight">
+                {product.name}
+              </h1>
+              {isAdmin && (
+                <Link
+                  href={`/admin/products/${product._id}/edit`}
+                  className="flex items-center gap-1.5 rounded-lg bg-steel-100 px-3 py-1.5 text-xs font-medium text-steel-600 hover:bg-brand-50 hover:text-brand-600 transition-colors"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit
+                </Link>
+              )}
+            </div>
 
             {product.shortDescription && (
               <p className="mt-4 text-steel-600 leading-relaxed">

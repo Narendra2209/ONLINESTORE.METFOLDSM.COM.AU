@@ -141,9 +141,11 @@ export const authService = {
 
     const tokens = generateTokens(user);
 
-    // Rotate: remove old refresh token, add new one
+    // Rotate: remove old refresh token, then add new one
     await User.findByIdAndUpdate(user._id, {
       $pull: { refreshTokens: token },
+    });
+    await User.findByIdAndUpdate(user._id, {
       $push: { refreshTokens: tokens.refreshToken },
     });
 

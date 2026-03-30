@@ -8,6 +8,7 @@ import importRoutes from './import.routes';
 import cmsRoutes, { adminCmsRoutes } from './cms.routes';
 import reportRoutes from './report.routes';
 import adminUserRoutes, { roleRoutes } from './admin-user.routes';
+import claddingRoutes, { adminCladdingRoutes } from './cladding.routes';
 
 const router = Router();
 
@@ -49,6 +50,7 @@ router.use('/categories', categoryRoutes);
 router.use('/products', productRoutes);
 router.use('/cart', cartRoutes);
 router.use('/orders', orderRoutes);
+router.use('/cladding', claddingRoutes);
 
 // Admin routes
 router.use('/admin/categories', adminCategoryRoutes);
@@ -58,6 +60,7 @@ router.use('/admin/orders', adminOrderRoutes);
 router.use('/admin/imports', importRoutes);
 router.use('/admin/users', adminUserRoutes);
 router.use('/admin/roles', roleRoutes);
+router.use('/admin/cladding', adminCladdingRoutes);
 
 // CMS routes
 router.use('/', cmsRoutes);
