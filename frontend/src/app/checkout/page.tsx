@@ -99,7 +99,16 @@ export default function CheckoutPage() {
         country: 'Australia',
       };
 
-      const { data } = await api.post('/orders', {
+      // For pickup, use a placeholder address if fields are empty
+      if (deliveryMethod === 'pickup' && !address.street) {
+        address.street = 'Pickup from warehouse';
+        address.city = address.city || 'Melbourne';
+        address.state = address.state || 'VIC';
+        address.postcode = address.postcode || '3000';
+        address.phone = address.phone || formData.phone || '0000000000';
+      }
+
+      const orderPayload = {
         customerEmail: formData.customerEmail,
         customerName: formData.customerName,
         shippingAddress: address,
@@ -120,13 +129,16 @@ export default function CheckoutPage() {
         subtotal,
         taxAmount: gst,
         total,
-      });
+      };
+
+      const { data } = await api.post('/orders', orderPayload);
 
       setOrderPlaced(true);
       clearCart();
       toast.success('Order placed successfully!');
       router.push(`/checkout/success?order=${data.data.orderNumber}`);
     } catch (err: any) {
+      console.error('Order failed:', err.response?.data || err.message);
       toast.error(err.response?.data?.message || 'Failed to place order');
     } finally {
       setIsSubmitting(false);

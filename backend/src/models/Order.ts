@@ -70,13 +70,13 @@ export interface IOrder extends Document {
 
 const addressSchema = new Schema<IAddress>(
   {
-    fullName: { type: String, required: true },
+    fullName: { type: String, default: '' },
     company: { type: String, default: '' },
-    phone: { type: String, required: true },
-    street: { type: String, required: true },
-    city: { type: String, required: true },
-    state: { type: String, required: true },
-    postcode: { type: String, required: true },
+    phone: { type: String, default: '' },
+    street: { type: String, default: '' },
+    city: { type: String, default: '' },
+    state: { type: String, default: '' },
+    postcode: { type: String, default: '' },
     country: { type: String, default: 'Australia' },
   },
   { _id: false }
