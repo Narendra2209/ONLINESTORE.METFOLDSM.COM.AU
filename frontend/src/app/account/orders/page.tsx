@@ -13,7 +13,7 @@ interface Order {
   orderNumber: string;
   status: string;
   total: number;
-  items: Array<{ name: string; quantity: number }>;
+  items: Array<{ productName: string; quantity: number }>;
   createdAt: string;
 }
 

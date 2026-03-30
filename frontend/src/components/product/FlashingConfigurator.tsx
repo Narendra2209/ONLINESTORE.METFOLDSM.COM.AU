@@ -36,14 +36,14 @@ function roundUpGirth(girth: number): number {
 
 const COLOUR_OPTIONS: Record<string, string[]> = {
   'Colorbond': [
-    'Basalt', 'Classic Cream', 'Cottage Green', 'Cove', 'Deep Ocean', 'Dover White', 'Dune',
-    'Evening Haze', 'Gully', 'Ironstone', 'Jasper', 'Mangrove', 'Manor Red',
+    'Basalt', 'Bluegum', 'Classic Cream', 'Cottage Green', 'Deep Ocean', 'Dover White', 'Dune',
+    'Evening Haze', 'Gully', 'Ironstone', 'Jasper', 'Manor Red',
     'Monument', 'Night Sky', 'Pale Eucalypt', 'Paperbark',
-    'Shale Grey', 'Southerly', 'Surfmist', 'Terrain', 'Wallaby',
+    'Shale Grey', 'Southerly', 'Surfmist', 'Wallaby',
     'Windspray', 'Woodland Grey',
   ],
   'Matt Colorbond': ['Basalt', 'Bluegum', 'Dune', 'Monument', 'Shale Grey', 'Surfmist'],
-  'Ultra Colorbond': ['Basalt', 'Cove', 'Deep Ocean', 'Dune', 'Monument', 'Shale Grey', 'Surfmist', 'Wallaby', 'Windspray', 'Woodland Grey'],
+  'Ultra Colorbond': ['Deep Ocean', 'Dune', 'Monument', 'Shale Grey', 'Surfmist', 'Wallaby', 'Windspray', 'Woodland Grey'],
   'Galvanised': ['Galvanised'],
   'Zinc': ['Zinc'],
 };

@@ -5,7 +5,7 @@ import { catchAsync } from '../utils/catchAsync';
 import { AuthRequest } from '../middlewares/auth';
 
 export const createOrder = catchAsync(async (req: AuthRequest, res: Response) => {
-  const order = await orderService.createFromCart({
+  const input = {
     userId: req.user?._id?.toString() || null,
     sessionId: req.cookies?.sessionId || req.headers['x-session-id'] as string || '',
     customerEmail: req.body.customerEmail || req.user?.email,
@@ -16,7 +16,21 @@ export const createOrder = catchAsync(async (req: AuthRequest, res: Response) =>
     deliveryMethod: req.body.deliveryMethod || 'delivery',
     notes: req.body.notes,
     couponCode: req.body.couponCode,
-  });
+  };
+
+  // If frontend sends items directly, create order from them; otherwise fall back to DB cart
+  let order;
+  if (req.body.items && req.body.items.length > 0) {
+    order = await orderService.createFromItems({
+      ...input,
+      items: req.body.items,
+      subtotal: req.body.subtotal,
+      taxAmount: req.body.taxAmount,
+      total: req.body.total,
+    });
+  } else {
+    order = await orderService.createFromCart(input);
+  }
   ApiResponse.created({ res, message: 'Order placed successfully', data: order });
 });
 

@@ -9,21 +9,28 @@ import Badge from '@/components/ui/Badge';
 import toast from 'react-hot-toast';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
 
+interface OrderItem {
+  productName: string;
+  productSku: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  selectedAttributes?: Array<{ attributeName: string; value: string }>;
+  length?: number;
+  pricingModel?: string;
+}
+
 interface OrderDetail {
   _id: string;
   orderNumber: string;
+  customerName: string;
+  customerEmail: string;
   status: string;
-  items: Array<{
-    name: string;
-    sku: string;
-    quantity: number;
-    unitPrice: number;
-    lineTotal: number;
-    selectedAttributes?: Array<{ name: string; value: string }>;
-    length?: number;
-    pricingModel?: string;
-  }>;
+  items: OrderItem[];
   shippingAddress?: {
+    fullName: string;
+    company: string;
+    phone: string;
     street: string;
     city: string;
     state: string;
@@ -36,7 +43,7 @@ interface OrderDetail {
   discount: number;
   total: number;
   deliveryMethod: string;
-  statusHistory: Array<{ status: string; timestamp: string; note?: string }>;
+  statusHistory: Array<{ status: string; changedAt: string; note?: string }>;
   payment: { method: string; status: string; paidAt?: string };
   createdAt: string;
   notes?: string;
@@ -106,13 +113,13 @@ export default function OrderDetailPage() {
               {order.items.map((item, idx) => (
                 <div key={idx} className="px-5 py-4 flex justify-between">
                   <div>
-                    <p className="font-medium text-steel-900">{item.name}</p>
-                    <p className="text-xs text-steel-500">SKU: {item.sku}</p>
+                    <p className="font-medium text-steel-900">{item.productName}</p>
+                    <p className="text-xs text-steel-500">SKU: {item.productSku}</p>
                     {item.selectedAttributes && item.selectedAttributes.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {item.selectedAttributes.map((attr, aIdx) => (
                           <span key={aIdx} className="text-xs bg-steel-100 text-steel-600 px-2 py-0.5 rounded">
-                            {attr.name}: {attr.value}
+                            {attr.attributeName}: {attr.value}
                           </span>
                         ))}
                         {item.length && (
@@ -142,7 +149,7 @@ export default function OrderDetailPage() {
                     <CheckCircle className="h-5 w-5 text-brand-500 mt-0.5 shrink-0" />
                     <div>
                       <p className="font-medium text-steel-900 capitalize">{entry.status}</p>
-                      <p className="text-xs text-steel-500">{formatDate(entry.timestamp)}</p>
+                      <p className="text-xs text-steel-500">{formatDate(entry.changedAt)}</p>
                       {entry.note && <p className="text-sm text-steel-600 mt-0.5">{entry.note}</p>}
                     </div>
                   </div>

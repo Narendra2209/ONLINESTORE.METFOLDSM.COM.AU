@@ -84,6 +84,76 @@ export const orderService = {
     return order;
   },
 
+  async createFromItems(input: CreateOrderInput & { items: any[]; subtotal: number; taxAmount: number; total: number }) {
+    if (!input.items || input.items.length === 0) {
+      throw ApiError.badRequest('No items provided');
+    }
+
+    const isValidObjectId = (id: any) => id && /^[0-9a-fA-F]{24}$/.test(String(id));
+
+    const orderItems = input.items.map((item: any) => ({
+      product: isValidObjectId(item.productId) ? item.productId : undefined,
+      productName: item.productName || 'Product',
+      productSku: item.productSku || '',
+      variant: isValidObjectId(item.variantId) ? item.variantId : null,
+      selectedAttributes: (item.selectedAttributes || []).map((a: any) => ({
+        attributeName: a.attributeName,
+        value: a.value,
+      })),
+      pricingModel: item.pricingModel || 'per_piece',
+      unitPrice: item.unitPrice,
+      length: item.length || null,
+      quantity: item.quantity,
+      lineTotal: item.lineTotal,
+    }));
+
+    const subtotal = input.subtotal || orderItems.reduce((sum: number, i: any) => sum + i.lineTotal, 0);
+    const taxAmount = input.taxAmount || roundPrice(subtotal * GST_RATE);
+    const total = input.total || roundPrice(subtotal + taxAmount);
+
+    const order = await Order.create({
+      orderNumber: generateOrderNumber(),
+      user: input.userId,
+      customerEmail: input.customerEmail,
+      customerName: input.customerName,
+      userType: input.userType,
+      items: orderItems,
+      shippingAddress: input.shippingAddress,
+      billingAddress: input.billingAddress,
+      subtotal,
+      taxAmount,
+      shippingCost: 0,
+      discount: 0,
+      total,
+      status: 'pending',
+      statusHistory: [
+        { status: 'pending', note: 'Order placed', changedBy: input.userId, changedAt: new Date() },
+      ],
+      deliveryMethod: input.deliveryMethod,
+      notes: input.notes || '',
+      couponCode: input.couponCode || '',
+    });
+
+    // Increment salesCount
+    const salesUpdates = orderItems.map((item: any) =>
+      Product.findByIdAndUpdate(item.product, { $inc: { salesCount: item.quantity } })
+    );
+    await Promise.all(salesUpdates);
+
+    // Also clear DB cart if it exists
+    try {
+      const cart = await Cart.findOne(
+        input.userId ? { user: input.userId } : { sessionId: input.sessionId }
+      );
+      if (cart) {
+        cart.items = [] as any;
+        await cart.save();
+      }
+    } catch (_) { /* ignore */ }
+
+    return order;
+  },
+
   async getByOrderNumber(orderNumber: string) {
     const order = await Order.findOne({ orderNumber });
     if (!order) throw ApiError.notFound('Order not found');
@@ -157,11 +227,11 @@ export const orderService = {
       Order.countDocuments({ createdAt: { $gte: today } }),
       Order.countDocuments({ status: 'pending' }),
       Order.aggregate([
-        { $match: { 'payment.status': 'paid' } },
+        { $match: { status: { $nin: ['cancelled', 'refunded'] } } },
         { $group: { _id: null, total: { $sum: '$total' } } },
       ]),
       Order.aggregate([
-        { $match: { createdAt: { $gte: today }, 'payment.status': 'paid' } },
+        { $match: { createdAt: { $gte: today }, status: { $nin: ['cancelled', 'refunded'] } } },
         { $group: { _id: null, total: { $sum: '$total' } } },
       ]),
     ]);

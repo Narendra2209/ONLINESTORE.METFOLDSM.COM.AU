@@ -8,64 +8,30 @@ import { ShoppingCart, User, Search, Menu, X, ChevronDown, LogOut, Phone, Layout
 import { useAuthStore } from '@/store/authStore';
 import { useCartStore } from '@/store/cartStore';
 import { cn } from '@/lib/utils';
+import api from '@/lib/axios';
 
-const navigation = [
+interface NavItem {
+  name: string;
+  href: string;
+  children?: NavItem[];
+}
+
+// Fallback navigation (used while API loads)
+const fallbackNavigation: NavItem[] = [
   { name: 'Flashing', href: '/flashing' },
-  {
-    name: 'Cladding',
-    href: '/categories/cladding',
-    children: [
-      { name: 'Cladding Panels', href: '/categories/cladding-panels' },
-      { name: 'Cladding Accessories', href: '/categories/cladding-accessories' },
-    ],
-  },
-  {
-    name: 'Roofing',
-    href: '/categories/roofing',
-    children: [
-      { name: 'Roof Sheets', href: '/categories/roof-sheets' },
-      { name: 'Roofing Accessories', href: '/categories/roofing-accessories' },
-      { name: 'Polycarbonate Sheets', href: '/categories/polycarbonate-sheets' },
-    ],
-  },
-  {
-    name: 'Fascia & Gutter',
-    href: '/categories/fascia-and-gutter',
-    children: [
-      { name: 'Fascia & Gutter Products', href: '/categories/fascia-and-gutter-products' },
-      { name: 'Fascia Accessories', href: '/categories/fascia-accessories' },
-      { name: 'Gutter Accessories', href: '/categories/gutter-accessories' },
-    ],
-  },
-  {
-    name: 'Downpipe',
-    href: '/categories/downpipe',
-    children: [
-      { name: 'Downpipes', href: '/categories/downpipes' },
-      // { name: 'Downpipe Accessories', href: '/categories/downpipe-accessories' },
-      { name: 'Downpipe Clips', href: '/categories/downpipe-clips' },
-      { name: 'Downpipe Offsets', href: '/categories/downpipe-offsets' },
-      { name: 'Pops', href: '/categories/pops' },
-    ],
-  },
-  {
-    name: 'RainWater Goods',
-    href: '/categories/rainwater-goods',
-    children: [
-      { name: 'Sumps & Rainheads', href: '/categories/sumps-and-rainheads' },
-      // { name: 'Rainheads & Sumps', href: '/categories/rainheads-and-sumps' },
-      { name: 'Dambuster Products', href: '/categories/dambuster-products' },
-    ],
-  },
-  {
-    name: 'Accessories',
-    href: '/categories/accessories',
-    children: [
-      { name: 'Screws', href: '/categories/screws' },
-      { name: 'Insulations', href: '/categories/insulations' },
-    ],
-  },
+  { name: 'Cladding', href: '/categories/cladding' },
+  { name: 'Roofing', href: '/categories/roofing' },
+  { name: 'Fascia & Gutter', href: '/categories/fascia-and-gutter' },
+  { name: 'Downpipe', href: '/categories/downpipe' },
+  { name: 'RainWater Goods', href: '/categories/rainwater-goods' },
+  { name: 'Accessories', href: '/categories/accessories' },
 ];
+
+// Special routes for top-level categories that have custom pages
+const SPECIAL_ROUTES: Record<string, string> = {
+  'flashing': '/flashing',
+  'flashings': '/flashing',
+};
 
 export default function Header() {
   const { user, isAuthenticated, logout } = useAuthStore();
@@ -78,8 +44,36 @@ export default function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [navigation, setNavigation] = useState<NavItem[]>(fallbackNavigation);
+
   const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const isAdmin = user?.role && ['super_admin', 'admin', 'manager', 'sales_staff', 'inventory_staff', 'content_staff'].includes(user.role);
+
+  // Fetch categories from API and build navigation
+  useEffect(() => {
+    api.get('/categories')
+      .then((res) => {
+        const tree = res.data?.data || [];
+        if (tree.length === 0) return;
+
+        // API returns tree: [{name, slug, children: [{name, slug, children: []}]}]
+        const nav: NavItem[] = tree.map((parent: any) => {
+          const children = (parent.children || []).map((child: any) => ({
+            name: child.name,
+            href: SPECIAL_ROUTES[child.slug] || `/categories/${child.slug}`,
+          }));
+
+          return {
+            name: parent.name,
+            href: SPECIAL_ROUTES[parent.slug] || `/categories/${parent.slug}`,
+            ...(children.length > 0 ? { children } : {}),
+          };
+        });
+
+        if (nav.length > 0) setNavigation(nav);
+      })
+      .catch(() => { /* keep fallback */ });
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);

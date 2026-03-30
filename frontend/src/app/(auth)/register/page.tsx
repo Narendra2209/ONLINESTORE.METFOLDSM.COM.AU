@@ -263,15 +263,7 @@ function RegisterContent() {
       )} */}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <Select
-          label="Account Type"
-          options={[
-            { value: 'retail', label: 'Retail Customer' },
-            { value: 'trade', label: 'Trade Customer' },
-          ]}
-          error={errors.userType?.message}
-          {...register('userType')}
-        />
+        <input type="hidden" {...register('userType')} value="retail" />
 
         <div className="grid grid-cols-2 gap-4">
           <Input
@@ -304,25 +296,6 @@ function RegisterContent() {
           {...register('phone')}
         />
 
-        {userType === 'trade' && (
-          <div className="space-y-4 p-4 bg-brand-50/50 rounded-xl border border-brand-100">
-            <p className="text-xs font-semibold text-brand-700 uppercase tracking-wider">Trade Details</p>
-            <Input
-              label="Company Name"
-              placeholder="Your company name"
-              error={errors.company?.message}
-              {...register('company')}
-            />
-            <Input
-              label="ABN"
-              placeholder="XX XXX XXX XXX"
-              helperText="Australian Business Number for trade accounts"
-              error={errors.abn?.message}
-              {...register('abn')}
-            />
-          </div>
-        )}
-
         <Input
           label="Password"
           type="password"
@@ -339,17 +312,8 @@ function RegisterContent() {
           {...register('confirmPassword')}
         />
 
-        {userType === 'trade' && (
-          <div className="flex items-start gap-2 rounded-xl bg-amber-50 p-3 border border-amber-100">
-            <ShieldCheck className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-amber-800">
-              Trade accounts require approval. You will be notified once your account is reviewed and activated.
-            </p>
-          </div>
-        )}
-
         <Button type="submit" className="w-full btn-shine" size="lg" isLoading={isLoading}>
-          {userType === 'trade' ? 'Apply for Trade Account' : 'Create Account'}
+          Create Account
           <ArrowRight className="h-4 w-4 ml-2" />
         </Button>
       </form>

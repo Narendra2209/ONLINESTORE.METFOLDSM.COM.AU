@@ -1,5 +1,6 @@
 import Category, { ICategory } from '../models/Category';
 import Product from '../models/Product';
+import ProductVariant from '../models/ProductVariant';
 import { ApiError } from '../utils/ApiError';
 import { generateSlug } from '../utils/helpers';
 
@@ -90,19 +91,29 @@ export const categoryService = {
   },
 
   async delete(id: string) {
-    // Check for subcategories
-    const children = await Category.countDocuments({ parent: id });
-    if (children > 0) {
-      throw ApiError.badRequest('Cannot delete category with subcategories');
+    // Collect all category IDs to delete (this category + all descendants)
+    const idsToDelete: string[] = [id];
+    const collectChildren = async (parentId: string) => {
+      const children = await Category.find({ parent: parentId }, '_id');
+      for (const child of children) {
+        idsToDelete.push(child._id.toString());
+        await collectChildren(child._id.toString());
+      }
+    };
+    await collectChildren(id);
+
+    // Delete all products and their variants under these categories
+    const products = await Product.find({ category: { $in: idsToDelete } }, '_id');
+    if (products.length > 0) {
+      const productIds = products.map((p) => p._id);
+      await ProductVariant.deleteMany({ product: { $in: productIds } });
+      await Product.deleteMany({ _id: { $in: productIds } });
     }
 
-    // Check for products
-    const products = await Product.countDocuments({ category: id });
-    if (products > 0) {
-      throw ApiError.badRequest('Cannot delete category with products');
-    }
+    // Delete all categories (children + parent)
+    await Category.deleteMany({ _id: { $in: idsToDelete } });
 
-    return Category.findByIdAndDelete(id);
+    return { deletedCategories: idsToDelete.length, deletedProducts: products.length };
   },
 
   async reorder(items: Array<{ id: string; sortOrder: number }>) {

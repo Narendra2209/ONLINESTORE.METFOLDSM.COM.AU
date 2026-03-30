@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Category, Product } from '@/types/product';
 import { productApi } from '@/services/product.service';
@@ -10,9 +10,25 @@ import Breadcrumb from '@/components/ui/Breadcrumb';
 import Skeleton from '@/components/ui/Skeleton';
 import { ArrowRight, Grid3X3 } from 'lucide-react';
 
+// Categories with custom pages — redirect instead of showing product listing
+const CUSTOM_PAGES: Record<string, string> = {
+};
+
 export default function CategoryPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const router = useRouter();
+
+  // Redirect to custom page if this category has one
+  useEffect(() => {
+    if (CUSTOM_PAGES[slug]) {
+      router.replace(CUSTOM_PAGES[slug]);
+    }
+  }, [slug, router]);
+
+  if (CUSTOM_PAGES[slug]) {
+    return null;
+  }
   const [category, setCategory] = useState<Category | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);

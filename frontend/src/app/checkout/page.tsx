@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
@@ -27,9 +27,12 @@ const AUSTRALIAN_STATES = [
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, clearCart } = useCartStore();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderPlaced, setOrderPlaced] = useState(false);
   const [deliveryMethod, setDeliveryMethod] = useState<'delivery' | 'pickup'>('delivery');
+  const [hasSavedAddress, setHasSavedAddress] = useState(false);
+  const [editingAddress, setEditingAddress] = useState(false);
 
   const [formData, setFormData] = useState({
     customerEmail: user?.email || '',
@@ -42,6 +45,35 @@ export default function CheckoutPage() {
     postcode: '',
     notes: '',
   });
+
+  // Auto-fill user details and default saved address
+  useEffect(() => {
+    if (!user) return;
+    // Fill name and email from user profile
+    setFormData((prev) => ({
+      ...prev,
+      customerName: `${user.firstName} ${user.lastName}`.trim() || prev.customerName,
+      customerEmail: user.email || prev.customerEmail,
+    }));
+    // Fill address, phone, company from saved default address
+    api.get('/auth/addresses').then(({ data }) => {
+      const addresses = data.data || [];
+      const defaultAddr = addresses.find((a: any) => a.isDefault) || addresses[0];
+      if (defaultAddr) {
+        setHasSavedAddress(true);
+        setFormData((prev) => ({
+          ...prev,
+          customerName: defaultAddr.fullName || prev.customerName,
+          phone: defaultAddr.phone || prev.phone,
+          company: defaultAddr.company || prev.company,
+          street: defaultAddr.street || prev.street,
+          city: defaultAddr.city || prev.city,
+          state: defaultAddr.state || prev.state,
+          postcode: defaultAddr.postcode || prev.postcode,
+        }));
+      }
+    }).catch(() => {});
+  }, [user]);
 
   const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
   const gst = subtotal * 0.1;
@@ -74,8 +106,23 @@ export default function CheckoutPage() {
         billingAddress: address,
         deliveryMethod,
         notes: formData.notes,
+        items: items.map((item) => ({
+          productId: item.product._id,
+          productName: item.product.name,
+          productSku: item.product.sku,
+          selectedAttributes: item.selectedAttributes,
+          pricingModel: item.pricingModel,
+          unitPrice: item.unitPrice,
+          length: item.length,
+          quantity: item.quantity,
+          lineTotal: item.lineTotal,
+        })),
+        subtotal,
+        taxAmount: gst,
+        total,
       });
 
+      setOrderPlaced(true);
       clearCart();
       toast.success('Order placed successfully!');
       router.push(`/checkout/success?order=${data.data.orderNumber}`);
@@ -86,7 +133,7 @@ export default function CheckoutPage() {
     }
   };
 
-  if (items.length === 0) {
+  if (items.length === 0 && !orderPlaced) {
     return (
       <div className="container-main py-16 text-center">
         <ShoppingBag className="mx-auto h-16 w-16 text-steel-300" />
@@ -107,16 +154,76 @@ export default function CheckoutPage() {
           <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-3">
             {/* Left: Form */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Contact */}
-              <div className="rounded-xl bg-white p-6 border border-steel-100">
-                <h2 className="text-lg font-semibold text-steel-900 mb-4">Contact Information</h2>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Input label="Full Name *" name="customerName" value={formData.customerName} onChange={handleChange} required />
-                  <Input label="Email *" name="customerEmail" type="email" value={formData.customerEmail} onChange={handleChange} required />
-                  <Input label="Phone *" name="phone" type="tel" value={formData.phone} onChange={handleChange} required />
-                  <Input label="Company" name="company" value={formData.company} onChange={handleChange} />
+              {/* Contact — show summary if saved, form if not */}
+              {hasSavedAddress && !editingAddress ? (
+                <div className="rounded-xl bg-white p-6 border border-steel-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-steel-900">Contact & Delivery Details</h2>
+                    <button
+                      type="button"
+                      onClick={() => setEditingAddress(true)}
+                      className="text-sm font-medium text-brand-600 hover:text-brand-700"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                  <div className="space-y-2 text-sm text-steel-700">
+                    <p className="font-medium text-steel-900">{formData.customerName}</p>
+                    <p>{formData.customerEmail}</p>
+                    {formData.phone && <p>{formData.phone}</p>}
+                    {formData.company && <p>{formData.company}</p>}
+                    {formData.street && (
+                      <div className="mt-3 pt-3 border-t border-steel-100">
+                        <p>{formData.street}</p>
+                        <p>{formData.city}, {formData.state} {formData.postcode}</p>
+                        <p>Australia</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="rounded-xl bg-white p-6 border border-steel-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-lg font-semibold text-steel-900">Contact Information</h2>
+                      {editingAddress && (
+                        <button type="button" onClick={() => setEditingAddress(false)} className="text-sm font-medium text-brand-600 hover:text-brand-700">
+                          Use Saved Address
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <Input label="Full Name *" name="customerName" value={formData.customerName} onChange={handleChange} required />
+                      <Input label="Email *" name="customerEmail" type="email" value={formData.customerEmail} onChange={handleChange} required />
+                      <Input label="Phone *" name="phone" type="tel" value={formData.phone} onChange={handleChange} required />
+                      <Input label="Company" name="company" value={formData.company} onChange={handleChange} />
+                    </div>
+                  </div>
+
+                  {/* Shipping address form */}
+                  {deliveryMethod === 'delivery' && (
+                    <div className="rounded-xl bg-white p-6 border border-steel-100">
+                      <h2 className="text-lg font-semibold text-steel-900 mb-4">Shipping Address</h2>
+                      <div className="grid grid-cols-1 gap-4">
+                        <Input label="Street Address *" name="street" value={formData.street} onChange={handleChange} required />
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                          <Input label="City *" name="city" value={formData.city} onChange={handleChange} required />
+                          <Select
+                            label="State *"
+                            name="state"
+                            options={AUSTRALIAN_STATES}
+                            placeholder="Select state"
+                            value={formData.state}
+                            onChange={handleChange}
+                            required
+                          />
+                          <Input label="Postcode *" name="postcode" value={formData.postcode} onChange={handleChange} required />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
 
               {/* Delivery method */}
               <div className="rounded-xl bg-white p-6 border border-steel-100">
@@ -141,29 +248,6 @@ export default function CheckoutPage() {
                   ))}
                 </div>
               </div>
-
-              {/* Shipping address */}
-              {deliveryMethod === 'delivery' && (
-                <div className="rounded-xl bg-white p-6 border border-steel-100">
-                  <h2 className="text-lg font-semibold text-steel-900 mb-4">Shipping Address</h2>
-                  <div className="grid grid-cols-1 gap-4">
-                    <Input label="Street Address *" name="street" value={formData.street} onChange={handleChange} required />
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                      <Input label="City *" name="city" value={formData.city} onChange={handleChange} required />
-                      <Select
-                        label="State *"
-                        name="state"
-                        options={AUSTRALIAN_STATES}
-                        placeholder="Select state"
-                        value={formData.state}
-                        onChange={handleChange}
-                        required
-                      />
-                      <Input label="Postcode *" name="postcode" value={formData.postcode} onChange={handleChange} required />
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Notes */}
               <div className="rounded-xl bg-white p-6 border border-steel-100">

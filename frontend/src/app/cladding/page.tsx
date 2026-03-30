@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { ShoppingCart, ArrowLeft, Layers } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 import { cn } from '@/lib/utils';
@@ -126,6 +127,15 @@ const MATERIAL_COLOURS: Record<string, { name: string; hex: string }[]> = {
   'VM ZINC': [
     { name: 'VM ZINC', hex: '#A8ADB0' },
   ],
+};
+
+// Product name to slug mapping
+const PRODUCT_SLUGS: Record<string, string> = {
+  'Interlocking': 'interlocking',
+  'NailstriP': 'nailstrip',
+  'Nailstrip': 'nailstrip',
+  'Snaplock': 'snaplock',
+  'Standing Seam': 'standing-seam',
 };
 
 // ── HELPERS ──
@@ -377,12 +387,13 @@ export default function CladdingPage() {
               const priceRange = getProductPriceRange(productName);
               const variants = getVariantCount(productName);
 
+              const slug = PRODUCT_SLUGS[productName] || productName.toLowerCase().replace(/\s+/g, '-');
+
               return (
-                <button
+                <Link
                   key={productName}
-                  type="button"
+                  href={`/products/${slug}`}
                   className="group rounded-xl border-2 border-steel-200 bg-white p-6 text-left transition-all hover:border-brand-400 hover:shadow-lg hover:shadow-brand-100/50 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  onClick={() => handleSelectProduct(productName)}
                 >
                   {/* Icon area */}
                   <div className="h-32 flex items-center justify-center rounded-lg bg-steel-50 group-hover:bg-brand-50 transition-colors mb-4">
@@ -415,7 +426,7 @@ export default function CladdingPage() {
                   <div className="mt-4 w-full rounded-lg bg-brand-600 py-2.5 text-center text-sm font-semibold text-white group-hover:bg-brand-700 transition-colors">
                     Select Options &rarr;
                   </div>
-                </button>
+                </Link>
               );
             })}
           </div>
