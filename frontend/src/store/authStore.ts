@@ -39,6 +39,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { data } = await api.post('/auth/login', { email, password });
       localStorage.setItem('accessToken', data.data.accessToken);
       set({ user: normalizeUser(data.data.user), isAuthenticated: true });
+      // Load user's saved cart from backend (don't push empty local cart)
+      const { useCartStore } = await import('./cartStore');
+      await useCartStore.getState().loadFromBackend();
     } finally {
       set({ isLoading: false });
     }
@@ -91,12 +94,19 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: async () => {
+    // Save cart to backend BEFORE removing token
+    try {
+      const { useCartStore } = await import('./cartStore');
+      await useCartStore.getState().syncToBackend();
+    } catch { /* ignore */ }
+    // Now logout and remove token
     try {
       await api.post('/auth/logout');
-    } catch {
-      // Continue with local logout even if API fails
-    }
+    } catch { /* ignore */ }
     localStorage.removeItem('accessToken');
+    // Clear local cart only (backend already has the saved version)
+    const { useCartStore } = await import('./cartStore');
+    useCartStore.getState().clearCart();
     set({ user: null, isAuthenticated: false });
   },
 
@@ -107,9 +117,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const { data } = await api.get('/auth/me');
       set({ user: normalizeUser(data.data), isAuthenticated: true });
+      // Load cart from backend (merge with local)
+      const { useCartStore } = await import('./cartStore');
+      useCartStore.getState().loadFromBackend();
     } catch {
-      // Token expired or invalid — silently clear, don't force logout
-      // User can continue browsing and adding to cart without login
       localStorage.removeItem('accessToken');
       set({ user: null, isAuthenticated: false, isLoading: false });
     } finally {

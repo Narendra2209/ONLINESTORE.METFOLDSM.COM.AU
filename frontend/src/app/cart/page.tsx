@@ -368,6 +368,10 @@ export default function CartPage() {
     doc.save(fileName);
   }, [items, user, deliveryMethod, address, selectedBranch, scheduledDate, comment]);
 
+  // Get effective contact name and phone (from address, saved address, or user profile)
+  const getContactName = () => address.name || savedAddress?.fullName || (user ? `${user.firstName} ${user.lastName}` : '');
+  const getContactPhone = () => address.phone || savedAddress?.phone || '';
+
   // Validate all details before download/order
   const validateOrder = (): boolean => {
     if (!isAuthenticated) {
@@ -375,16 +379,12 @@ export default function CartPage() {
       router.push('/login');
       return false;
     }
-    if (deliveryMethod === 'delivery') {
-      if (!address.name.trim()) { toast.error('Please enter contact name'); return false; }
-      if (!address.phone.trim()) { toast.error('Please enter phone number'); return false; }
+    if (deliveryMethod === 'delivery' && !hasSavedAddress) {
+      if (!getContactName().trim()) { toast.error('Please enter contact name'); return false; }
       if (!address.street.trim()) { toast.error('Please enter delivery address'); return false; }
-      if (!address.city.trim()) { toast.error('Please enter city'); return false; }
-      if (!address.postcode.trim()) { toast.error('Please enter postcode'); return false; }
-      if (!scheduledDate) { toast.error('Please select a delivery date'); return false; }
-    } else {
+    }
+    if (deliveryMethod === 'pickup') {
       if (!selectedBranch) { toast.error('Please select a pickup branch'); return false; }
-      if (!scheduledDate) { toast.error('Please select a pickup date'); return false; }
     }
     return true;
   };
@@ -397,13 +397,13 @@ export default function CartPage() {
     try {
       const shippingAddr = deliveryMethod === 'delivery'
         ? {
-            fullName: address.name,
+            fullName: getContactName(),
             company: '',
-            phone: address.phone,
-            street: address.street,
-            city: address.city,
-            state: address.state,
-            postcode: address.postcode,
+            phone: getContactPhone(),
+            street: address.street || savedAddress?.street || '',
+            city: address.city || savedAddress?.city || '',
+            state: address.state || savedAddress?.state || 'VIC',
+            postcode: address.postcode || savedAddress?.postcode || '',
             country: 'Australia',
           }
         : {
@@ -419,7 +419,7 @@ export default function CartPage() {
 
       const { data } = await api.post('/orders', {
         customerEmail: user?.email || '',
-        customerName: user ? `${user.firstName} ${user.lastName}` : address.name,
+        customerName: getContactName(),
         shippingAddress: shippingAddr,
         billingAddress: shippingAddr,
         deliveryMethod,
@@ -744,7 +744,7 @@ export default function CartPage() {
                 {/* Scheduled Date */}
                 <div className="mt-4">
                   <label className="block text-xs font-semibold text-steel-700 mb-1">
-                    {deliveryMethod === 'delivery' ? 'Delivery Date *' : 'Pickup Date *'}
+                    {deliveryMethod === 'delivery' ? 'Preferred Delivery Date' : 'Preferred Pickup Date'}
                   </label>
                   <input
                     type="date"

@@ -12,4 +12,8 @@ router.put('/items/:itemId', cartController.updateItemQuantity);
 router.delete('/items/:itemId', cartController.removeItem);
 router.delete('/', cartController.clearCart);
 
+// Full cart sync (frontend Zustand ↔ backend DB)
+router.get('/sync', cartController.getSyncCart);
+router.post('/sync', cartController.syncCart);
+
 export default router;
