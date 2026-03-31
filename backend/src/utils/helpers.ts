@@ -5,10 +5,12 @@ export const generateSlug = (text: string): string => {
   return slugify(text, { lower: true, strict: true, trim: true });
 };
 
-export const generateOrderNumber = (): string => {
-  const year = new Date().getFullYear();
-  const random = crypto.randomInt(10000, 99999);
-  return `MET-${year}-${random}`;
+export const generateOrderNumber = async (): Promise<string> => {
+  // Dynamically import to avoid circular deps
+  const Order = (await import('../models/Order')).default;
+  const count = await Order.countDocuments();
+  const seq = String(count + 1).padStart(7, '0');
+  return `M4TFOLD-${seq}`;
 };
 
 export const generateSKU = (parts: string[]): string => {

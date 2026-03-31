@@ -49,7 +49,7 @@ export const orderService = {
     const summary = cartService.getCartSummary(cart);
 
     const order = await Order.create({
-      orderNumber: generateOrderNumber(),
+      orderNumber: await generateOrderNumber(),
       user: input.userId,
       customerEmail: input.customerEmail,
       customerName: input.customerName,
@@ -112,7 +112,7 @@ export const orderService = {
     const total = input.total || roundPrice(subtotal + taxAmount);
 
     const order = await Order.create({
-      orderNumber: generateOrderNumber(),
+      orderNumber: await generateOrderNumber(),
       user: input.userId,
       customerEmail: input.customerEmail,
       customerName: input.customerName,

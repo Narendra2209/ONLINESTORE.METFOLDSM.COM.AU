@@ -91,14 +91,13 @@ export default function CartPage() {
   };
 
   // Generate PDF matching Metfold order sheet format
-  const downloadCartPdf = useCallback(async () => {
+  const downloadCartPdf = useCallback(async (orderNum: string = '') => {
     const doc = new jsPDF('l', 'mm', 'a4'); // Landscape
     const pageWidth = 297;
     const pageHeight = 210;
     const margin = 8;
     const contentWidth = pageWidth - margin * 2;
     let y = margin;
-    const orderNum = `M4Tfold-${String(Date.now()).slice(-4)}`;
     const dateStr = new Date().toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const getAttr = (item: typeof items[0], name: string) =>
       item.selectedAttributes.find((a) => a.attributeName === name)?.value || '';
@@ -133,19 +132,21 @@ export default function CartPage() {
       doc.setTextColor(0, 0, 0);
       doc.text(orderNum, pageWidth - margin, hY + 10, { align: 'right' });
 
-      y = hY + 18;
+      y = hY + 16;
 
       // ── Customer info section ──
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.3);
       doc.line(margin, y, pageWidth - margin, y);
-      y += 5;
+      y += 4;
 
-      doc.setFontSize(8);
+      doc.setFontSize(7.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
 
-      // Row 1 — Order date (today) + Scheduled delivery/pickup date
+      const row = 4; // line spacing
+
+      // Row 1 — Date | Sched Delivery | PO No
       const schedLabel = deliveryMethod === 'pickup' ? 'Sched. Pickup-' : 'Sched. Delivery-';
       const schedFormatted = scheduledDate
         ? new Date(scheduledDate + 'T00:00:00').toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -153,75 +154,66 @@ export default function CartPage() {
 
       doc.text('Date:', margin, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(dateStr, margin + 13, y);
-
+      doc.text(dateStr, margin + 12, y);
       doc.setFont('helvetica', 'bold');
-      doc.text(schedLabel, margin + 50, y);
+      doc.text(schedLabel, margin + 55, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(schedFormatted, margin + 85, y);
+      doc.text(schedFormatted, margin + 82, y);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PO No.', margin + 185, y);
+      y += row;
 
-      if (user) {
-        doc.setFont('helvetica', 'bold');
-        doc.text('PO No.', margin + 170, y);
-      }
-      y += 5;
-
-      // Row 2 — Contact
+      // Row 2 — Contact | Order Placed by | Phone
       const contactName = deliveryMethod === 'delivery' ? address.name : (user ? `${user.firstName} ${user.lastName}` : '');
       const contactPhone = deliveryMethod === 'delivery' ? address.phone : '';
-      doc.setFont('helvetica', 'bold');
       doc.text('Contact-', margin, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(`${contactName}`, margin + 20, y);
-      if (contactPhone) doc.text(contactPhone, margin + 65, y);
-
+      doc.text(contactName, margin + 18, y);
       doc.setFont('helvetica', 'bold');
       doc.text('Order Placed by-', margin + 100, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(user ? `${user.firstName} ${user.lastName}` : '', margin + 135, y);
-
+      doc.text(user ? `${user.firstName} ${user.lastName}` : '', margin + 130, y);
       doc.setFont('helvetica', 'bold');
       doc.text('Phone-', margin + 185, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(contactPhone, margin + 200, y);
-      y += 5;
+      if (contactPhone) doc.text(contactPhone, margin + 200, y);
+      y += row;
 
-      // Row 3 — Customer + Dispatch
+      // Row 3 — Customer | Dispatch
       doc.setFont('helvetica', 'bold');
       doc.text('Customer:', margin, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(user?.email || '', margin + 25, y);
-
+      doc.text(user?.email || '', margin + 22, y);
       doc.setFont('helvetica', 'bold');
-      doc.text('Dispatch-', margin + 170, y);
+      doc.text('Dispatch-', margin + 185, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(deliveryMethod === 'delivery' ? 'Delivery' : 'Pickup', margin + 195, y);
-      y += 5;
+      doc.text(deliveryMethod === 'delivery' ? 'Delivery' : 'Pickup', margin + 204, y);
+      y += row;
 
-      // Row 4 — Delivery Address or Pickup Branch
+      // Row 4 — Delivery Address
       doc.setFont('helvetica', 'bold');
       doc.text('Delivery Address:', margin, y);
       doc.setFont('helvetica', 'normal');
       if (deliveryMethod === 'delivery') {
-        doc.text(`${address.street}, ${address.city}, ${address.state} ${address.postcode}`, margin + 40, y);
+        const addrLine = [address.street, address.city, address.state, address.postcode].filter(Boolean).join(', ');
+        doc.text(addrLine, margin + 36, y);
       } else {
         const branch = BRANCHES.find(b => b.id === selectedBranch);
-        doc.text(branch ? `PICKUP: ${branch.name} — ${branch.address}` : '', margin + 40, y);
+        doc.text(branch ? `PICKUP: ${branch.name} — ${branch.address}` : '', margin + 36, y);
       }
-      y += 5;
+      y += row;
 
-      doc.setFont('helvetica', 'bold');
-      doc.text('Comment to Production-', margin, y);
-      doc.setFont('helvetica', 'normal');
-      if (comment) doc.text(comment, margin + 50, y);
-      y += 4;
-      doc.setFont('helvetica', 'bold');
-      doc.text('Comment to Transport-', margin, y);
-      y += 3;
+      if (comment) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Notes-', margin, y);
+        doc.setFont('helvetica', 'normal');
+        doc.text(comment, margin + 16, y);
+        y += row;
+      }
 
       doc.setLineWidth(0.3);
       doc.line(margin, y, pageWidth - margin, y);
-      y += 3;
+      y += 2;
     };
 
     drawHeader();
@@ -400,6 +392,7 @@ export default function CartPage() {
     if (deliveryMethod === 'pickup') {
       if (!selectedBranch) { toast.error('Please select a pickup branch'); return false; }
     }
+    if (!scheduledDate) { toast.error('Please select a preferred delivery date'); return false; }
     return true;
   };
 
@@ -454,8 +447,8 @@ export default function CartPage() {
         total,
       });
 
-      // Download PDF
-      await downloadCartPdf();
+      // Download PDF with real order number
+      await downloadCartPdf(data.data.orderNumber);
 
       // Clear cart and redirect
       clearCart();
@@ -766,14 +759,16 @@ export default function CartPage() {
                 {/* Scheduled Date */}
                 <div className="mt-4">
                   <label className="block text-xs font-semibold text-steel-700 mb-1">
-                    {deliveryMethod === 'delivery' ? 'Preferred Delivery Date' : 'Preferred Pickup Date'}
+                    {deliveryMethod === 'delivery' ? 'Preferred Delivery Date' : 'Preferred Pickup Date'}{' '}
+                    <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
                     value={scheduledDate}
                     onChange={(e) => setScheduledDate(e.target.value)}
                     min={new Date().toISOString().split('T')[0]}
-                    className="w-full rounded-lg border border-steel-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                    required
+                    className={`w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 ${!scheduledDate ? 'border-red-300 bg-red-50' : 'border-steel-200'}`}
                   />
                 </div>
 

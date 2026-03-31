@@ -157,21 +157,36 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
     if (!isVariantBased || !product.variants) return null;
 
     // Get all user-selectable attributes — exclude Finish Category when Material is used as the selector
+    // Also exclude Colour from the "all selected" check — colour is tracked via selectedColour state
     const selectableAttrNames = Object.keys(variantAttributeOptions).filter(
-      (name) => !(name === 'Finish Category' && variantAttributeOptions['Material']?.values.size >= 1)
+      (name) =>
+        !(name === 'Finish Category' && variantAttributeOptions['Material']?.values.size >= 1) &&
+        name !== 'Colour'
     );
     const allSelected = selectableAttrNames.every((name) => selectedAttributes[name]);
     if (!allSelected) return null;
 
+    // Build the effective colour value (from selectedColour state or selectedAttributes)
+    const effectiveColour = selectedColour || selectedAttributes['Colour'] || '';
+
     // Find variant where all selected attributes match
-    // (variant may have extra attributes like Finish Category that we ignore)
-    return product.variants.find((v) =>
-      selectableAttrNames.every((name) => {
+    return product.variants.find((v) => {
+      const nonColourMatch = selectableAttrNames.every((name) => {
         const varAttr = v.attributes.find((a) => a.attributeName === name);
         return varAttr && varAttr.value === selectedAttributes[name];
-      })
-    ) || null;
-  }, [isVariantBased, product.variants, selectedAttributes, variantAttributeOptions]);
+      });
+      if (!nonColourMatch) return false;
+
+      // If variant has Colour attribute, match against effectiveColour (case-insensitive)
+      const varColour = v.attributes.find((a) => a.attributeName === 'Colour');
+      if (varColour) {
+        if (!effectiveColour) return false;
+        return varColour.value.toLowerCase() === effectiveColour.toLowerCase();
+      }
+      // Variant has no Colour attribute — matches regardless of colour selection
+      return true;
+    }) || null;
+  }, [isVariantBased, product.variants, selectedAttributes, selectedColour, variantAttributeOptions]);
 
   // Filter available values based on current selections (cascading)
   const getAvailableValues = (attrName: string): string[] => {
@@ -191,9 +206,12 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
       )
     );
 
+    // Fallback: if filtering left no variants, use ALL variants (so dimension buttons always show)
+    const variantsToUse = matchingVariants.length > 0 ? matchingVariants : product.variants;
+
     // Extract unique values for this attribute from matching variants
     const values = new Set<string>();
-    for (const v of matchingVariants) {
+    for (const v of variantsToUse) {
       const attr = v.attributes.find((a) => a.attributeName === attrName);
       if (attr) values.add(attr.value);
     }
@@ -714,6 +732,10 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
           filtered.push({ name: colName, hex: known?.hex || '#808080' });
         }
       }
+      // Fallback: if variants have Colour attribute but none matched, show all colours for this material
+      if (filtered.length === 0 && displayColours.length > 0) {
+        return displayColours;
+      }
       return filtered;
     }, [selectedMaterial, materialAttrKey, product.variants, hasColourInVariants]);
 
@@ -760,7 +782,17 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
         }
       }
       setSelectedAttributes(newAttrs);
-      setSelectedColour('');
+      // Auto-select colour if this material only has one colour option
+      const mColours = MATERIAL_COLOURS[material] || [];
+      if (mColours.length === 1) {
+        setSelectedColour(mColours[0].name);
+        // Only add to selectedAttributes if Colour is an actual variant attribute
+        if (hasColourInVariants) {
+          setSelectedAttributes({ ...newAttrs, Colour: mColours[0].name });
+        }
+      } else {
+        setSelectedColour('');
+      }
     };
 
     // Override handleAddToCart to include selectedColour
@@ -1074,7 +1106,12 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
               {materialColours.map((colour) => (
                 <button
                   key={colour.name}
-                  onClick={() => { setSelectedColour(colour.name); setSelectedAttributes((prev) => ({ ...prev, Colour: colour.name })); }}
+                  onClick={() => {
+                    setSelectedColour(colour.name);
+                    // Don't add Colour to selectedAttributes — it's tracked via selectedColour state
+                    // and matched case-insensitively in matchedVariant. Adding it here breaks
+                    // getAvailableValues dimension filtering for products where colour is separate.
+                  }}
                   className={cn(
                     'flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border-2 transition-all',
                     selectedColour === colour.name
