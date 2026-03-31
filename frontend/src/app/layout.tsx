@@ -9,22 +9,36 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
   title: {
-    default: 'Metfold - Industrial Roofing & Sheet Metal Supplies',
-    template: '%s | Metfold',
+    default: 'Metfold Sheet Metal | Roofing, Cladding & Rainwater Supplies Australia',
+    template: '%s | Metfold Sheet Metal',
   },
   description:
-    'Premium roofing, cladding, rainwater goods and sheet metal products for residential and commercial projects across Australia.',
+    'Australia\'s trusted supplier of Colorbond roofing, wall cladding, fascia & gutter, downpipes, flashings and rainwater goods. Configure online with live pricing. Trade accounts welcome.',
   keywords: [
-    'roofing',
-    'cladding',
-    'sheet metal',
-    'colorbond',
-    'guttering',
-    'fascia',
-    'downpipe',
-    'roof sheets',
-    'Australia',
+    'colorbond roofing',
+    'sheet metal supplies',
+    'wall cladding panels',
+    'fascia and gutter',
+    'rainwater goods',
+    'roof flashing',
+    'downpipes Australia',
+    'trade roofing supplies',
+    'interlocking cladding',
+    'roofing sheets Australia',
+    'metfold',
   ],
+  openGraph: {
+    type: 'website',
+    locale: 'en_AU',
+    siteName: 'Metfold Sheet Metal',
+    title: 'Metfold Sheet Metal | Roofing, Cladding & Rainwater Supplies',
+    description: 'Premium Colorbond roofing, cladding, rainwater goods and accessories. Configure online with live pricing and instant quotes.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
   icons: {
     icon: '/images/navicon.png',
     apple: '/images/navicon.png',
