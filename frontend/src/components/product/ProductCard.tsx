@@ -98,12 +98,12 @@ export default function ProductCard({ product }: ProductCardProps) {
         transition-all duration-300 hover:shadow-xl hover:shadow-steel-200/50 hover:-translate-y-1 hover:border-brand-200"
     >
       {/* Image */}
-      <div className="relative aspect-[4/3] bg-steel-50 overflow-hidden">
+      <div className="relative aspect-[4/3] bg-white overflow-hidden flex items-center justify-center">
         {imageUrl ? (
           <img
             src={imageUrl}
             alt={product.name}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+            className="h-full w-full object-contain p-2 transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-2">

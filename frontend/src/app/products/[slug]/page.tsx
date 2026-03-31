@@ -154,13 +154,13 @@ export default function ProductDetailPage() {
 
             {/* Thumbnail strip */}
             {product.images && product.images.length > 1 && (
-              <div className="flex gap-2.5 overflow-x-auto pb-1">
+              <div className="flex gap-2 overflow-x-auto pb-1">
                 {product.images.map((img, i) => (
                   <button
                     key={i}
                     onClick={() => setSelectedImage(i)}
                     className={cn(
-                      'h-18 w-18 flex-shrink-0 rounded-xl border-2 overflow-hidden transition-all duration-200',
+                      'h-14 w-14 flex-shrink-0 rounded-lg border-2 overflow-hidden bg-white transition-all duration-200',
                       selectedImage === i
                         ? 'border-brand-600 ring-2 ring-brand-200 shadow-md'
                         : 'border-steel-200 hover:border-steel-300 opacity-70 hover:opacity-100'
@@ -169,7 +169,7 @@ export default function ProductDetailPage() {
                     <img
                       src={img.url}
                       alt={img.alt || `Image ${i + 1}`}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain p-1 transition-transform duration-300 hover:scale-110"
                     />
                   </button>
                 ))}
