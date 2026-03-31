@@ -22,8 +22,19 @@ export default function ProductDetailPage() {
   const [activeTab, setActiveTab] = useState('description');
   const [selectedImage, setSelectedImage] = useState(0);
   const [uploading, setUploading] = useState(false);
+  const [zoom, setZoom] = useState(false);
+  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
+  const imageContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuthStore();
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = imageContainerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setZoomPos({ x: Math.min(100, Math.max(0, x)), y: Math.min(100, Math.max(0, y)) });
+  };
   const isAdmin = user?.role && ['super_admin', 'admin', 'manager', 'sales_staff', 'inventory_staff', 'content_staff'].includes(user.role);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,44 +123,78 @@ export default function ProductDetailPage() {
         <div className="mt-4 sm:mt-6 grid grid-cols-1 gap-6 sm:gap-8 lg:gap-10 lg:grid-cols-2">
           {/* Left: Image Gallery */}
           <div className="space-y-4">
-            {/* Main image */}
-            <div className="group relative aspect-square rounded-2xl bg-steel-50 border border-steel-100 flex items-center justify-center overflow-hidden">
-              {activeImage?.url ? (
-                <>
-                  <img
-                    src={activeImage.url}
-                    alt={activeImage.alt || product.name}
-                    className="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"
-                  />
-                  <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Main image with zoom */}
+            <div className="relative">
+              <div
+                ref={imageContainerRef}
+                className="relative aspect-square rounded-2xl bg-steel-50 border border-steel-100 flex items-center justify-center overflow-hidden cursor-crosshair"
+                onMouseEnter={() => activeImage?.url && setZoom(true)}
+                onMouseLeave={() => setZoom(false)}
+                onMouseMove={handleMouseMove}
+              >
+                {activeImage?.url ? (
+                  <>
+                    <img
+                      src={activeImage.url}
+                      alt={activeImage.alt || product.name}
+                      className="h-full w-full object-contain p-4"
+                    />
+                    {/* Lens indicator */}
+                    {zoom && (
+                      <div
+                        className="absolute pointer-events-none w-24 h-24 border-2 border-brand-500 bg-brand-100/20 rounded-sm"
+                        style={{
+                          left: `${zoomPos.x}%`,
+                          top: `${zoomPos.y}%`,
+                          transform: 'translate(-50%, -50%)',
+                        }}
+                      />
+                    )}
+                    <div className="absolute bottom-3 right-3 flex gap-2">
+                      {isAdmin && (
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          className="rounded-full bg-white/80 backdrop-blur-sm p-2 shadow-sm hover:bg-white transition-colors"
+                        >
+                          {uploading ? <Loader2 className="h-4 w-4 text-steel-600 animate-spin" /> : <Upload className="h-4 w-4 text-steel-600" />}
+                        </button>
+                      )}
+                      {!zoom && (
+                        <div className="rounded-full bg-white/80 backdrop-blur-sm p-2 shadow-sm">
+                          <ZoomIn className="h-4 w-4 text-steel-600" />
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-3 text-steel-300">
+                    <Package className="h-24 w-24" />
                     {isAdmin && (
                       <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="rounded-full bg-white/80 backdrop-blur-sm p-2 shadow-sm hover:bg-white transition-colors"
+                        className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 transition-colors"
                       >
-                        {uploading ? <Loader2 className="h-4 w-4 text-steel-600 animate-spin" /> : <Upload className="h-4 w-4 text-steel-600" />}
+                        {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                        Upload Image
                       </button>
                     )}
-                    <div className="rounded-full bg-white/80 backdrop-blur-sm p-2 shadow-sm">
-                      <ZoomIn className="h-4 w-4 text-steel-600" />
-                    </div>
                   </div>
-                </>
-              ) : (
-                <div className="flex flex-col items-center gap-3 text-steel-300">
-                  <Package className="h-24 w-24" />
-                  {isAdmin && (
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 transition-colors"
-                    >
-                      {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                      Upload Image
-                    </button>
-                  )}
-                </div>
+                )}
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              </div>
+
+              {/* Zoom panel — appears to the right */}
+              {zoom && activeImage?.url && (
+                <div
+                  className="absolute top-0 left-[calc(100%+16px)] w-[420px] h-[420px] rounded-2xl border border-steel-200 bg-white shadow-2xl overflow-hidden z-50 pointer-events-none hidden lg:block"
+                  style={{
+                    backgroundImage: `url(${activeImage.url})`,
+                    backgroundSize: '300%',
+                    backgroundPosition: `${zoomPos.x}% ${zoomPos.y}%`,
+                    backgroundRepeat: 'no-repeat',
+                  }}
+                />
               )}
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
             </div>
 
             {/* Thumbnail strip */}
