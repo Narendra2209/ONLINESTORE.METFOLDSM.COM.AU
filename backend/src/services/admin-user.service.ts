@@ -18,18 +18,28 @@ export const adminUserService = {
     firstName: string;
     lastName: string;
     email: string;
-    password: string;
+    password?: string;
     role: string;
     isActive?: boolean;
   }) {
-    const existing = await User.findOne({ email: data.email });
-    if (existing) throw ApiError.conflict('User with this email already exists');
-
     const role = await Role.findById(data.role);
     if (!role) throw ApiError.notFound('Role not found');
     if (!adminRoleNames.includes(role.name)) {
       throw ApiError.badRequest('Selected role is not an admin role');
     }
+
+    // If user already exists, just assign the role
+    const existing = await User.findOne({ email: data.email });
+    if (existing) {
+      existing.role = data.role as any;
+      if (data.firstName) existing.firstName = data.firstName;
+      if (data.lastName) existing.lastName = data.lastName;
+      if (data.isActive !== undefined) existing.isActive = data.isActive;
+      return existing.save();
+    }
+
+    // New user — password required
+    if (!data.password) throw ApiError.badRequest('Password is required for new users');
 
     return User.create({
       firstName: data.firstName,
@@ -42,6 +52,13 @@ export const adminUserService = {
       isApproved: true,
       userType: 'retail',
     });
+  },
+
+  async findUserByEmail(email: string) {
+    const user = await User.findOne({ email: new RegExp(`^${email}$`, 'i') })
+      .populate('role', 'name displayName');
+    if (!user) throw ApiError.notFound('No user found with this email');
+    return user;
   },
 
   async updateAdminUser(

@@ -91,12 +91,19 @@ export default function FlashingConfigurator() {
   const router = useRouter();
 
   // Drawing state
-  const [points, setPoints] = useState<Point[]>([
-    { x: 350, y: 200 },
-  ]);
+  const [points, setPoints] = useState<Point[]>([]);
   const [segments, setSegments] = useState<Segment[]>([]);
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
   const wasDragging = useRef(false);
+
+  // Label position offsets (user can drag labels away from default position)
+  const [segLabelOffsets, setSegLabelOffsets] = useState<Record<number, { dx: number; dy: number }>>({});
+  const [angleLabelOffsets, setAngleLabelOffsets] = useState<Record<number, { dx: number; dy: number }>>({});
+
+  // Which label is currently in edit mode (null = show static text)
+  const [editingSegment, setEditingSegment] = useState<number | null>(null);
+  const [editingAngle, setEditingAngle] = useState<number | null>(null);
+  const labelDragRef = useRef<{ type: 'seg' | 'angle'; idx: number; startX: number; startY: number; origDx: number; origDy: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Fold state
@@ -274,7 +281,7 @@ export default function FlashingConfigurator() {
   };
 
   const resetDiagram = () => {
-    setPoints([{ x: 350, y: 200 }]);
+    setPoints([]);
     setSegments([]);
     setStartFold('Nothing');
     setStartFoldMm(0);
@@ -631,7 +638,7 @@ export default function FlashingConfigurator() {
                   const perpX = dist1 > dist2 ? perpX1 : perpX2;
                   const perpY = dist1 > dist2 ? perpY1 : perpY2;
 
-                  const offsetDist = 25;
+                  const offsetDist = 45;
                   const labelX = midX + perpX * offsetDist;
                   const labelY = midY + perpY * offsetDist;
                   const seg = segments[i];
@@ -639,16 +646,75 @@ export default function FlashingConfigurator() {
 
                   const letter = String.fromCharCode(65 + i);
 
+                  const segOff = segLabelOffsets[i] || { dx: 0, dy: 0 };
+                  const finalLabelX = labelX + segOff.dx;
+                  const finalLabelY = labelY + segOff.dy;
+
+                  const isEditingSeg = editingSegment === i;
+
                   return (
                     <g key={`seg-${i}`}>
-                      <text
-                        x={labelX}
-                        y={labelY}
-                        textAnchor="middle"
-                        className="text-[14px] font-bold fill-blue-600 select-none pointer-events-none"
-                      >
-                        {seg.lengthMm > 0 ? seg.lengthMm : letter}
-                      </text>
+                      {isEditingSeg ? (
+                        <foreignObject x={finalLabelX - 38} y={finalLabelY - 16} width="76" height="32"
+                          style={{ cursor: 'move' }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            if ((e.target as HTMLElement).tagName === 'INPUT') return;
+                            labelDragRef.current = { type: 'seg', idx: i, startX: e.clientX, startY: e.clientY, origDx: segOff.dx, origDy: segOff.dy };
+                            const onMove = (ev: MouseEvent) => {
+                              if (!labelDragRef.current) return;
+                              const ddx = ev.clientX - labelDragRef.current.startX;
+                              const ddy = ev.clientY - labelDragRef.current.startY;
+                              setSegLabelOffsets((prev) => ({ ...prev, [i]: { dx: labelDragRef.current!.origDx + ddx, dy: labelDragRef.current!.origDy + ddy } }));
+                            };
+                            const onUp = () => { labelDragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+                            window.addEventListener('mousemove', onMove);
+                            window.addEventListener('mouseup', onUp);
+                          }}
+                        >
+                          <div className="flex items-center justify-center h-full">
+                            <div className="flex items-center bg-white border-2 border-blue-500 rounded-md px-1.5 py-0.5 shadow-md gap-1">
+                              <span className="text-[11px] font-bold text-blue-600 cursor-move">{letter}</span>
+                              <input
+                                type="number"
+                                min={0}
+                                autoFocus
+                                value={seg.lengthMm || ''}
+                                onChange={(e) => updateSegmentLength(i, parseInt(e.target.value) || 0)}
+                                onBlur={() => setEditingSegment(null)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') setEditingSegment(null); }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-[40px] text-[13px] font-bold text-blue-800 text-center bg-transparent outline-none border-none p-0 cursor-text"
+                                placeholder="mm"
+                              />
+                            </div>
+                          </div>
+                        </foreignObject>
+                      ) : (
+                        <g
+                          style={{ cursor: 'move' }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            labelDragRef.current = { type: 'seg', idx: i, startX: e.clientX, startY: e.clientY, origDx: segOff.dx, origDy: segOff.dy };
+                            const onMove = (ev: MouseEvent) => {
+                              if (!labelDragRef.current) return;
+                              const ddx = ev.clientX - labelDragRef.current.startX;
+                              const ddy = ev.clientY - labelDragRef.current.startY;
+                              setSegLabelOffsets((prev) => ({ ...prev, [i]: { dx: labelDragRef.current!.origDx + ddx, dy: labelDragRef.current!.origDy + ddy } }));
+                            };
+                            const onUp = () => { labelDragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+                            window.addEventListener('mousemove', onMove);
+                            window.addEventListener('mouseup', onUp);
+                          }}
+                          onClick={(e) => { e.stopPropagation(); setEditingSegment(i); }}
+                        >
+                          {/* Invisible hit area for dragging/clicking */}
+                          <rect x={finalLabelX - 36} y={finalLabelY - 14} width="72" height="28" rx="5" fill="transparent" />
+                          <text x={finalLabelX} y={finalLabelY + 5} textAnchor="middle" fontSize="16" fontWeight="bold" fill="#1d4ed8">
+                            {seg.lengthMm > 0 ? `${seg.lengthMm}mm` : letter}
+                          </text>
+                        </g>
+                      )}
                     </g>
                   );
                 });
@@ -701,7 +767,7 @@ export default function FlashingConfigurator() {
                 const nbisY = bisY / bisLen;
 
                 // Position angle label along the bisector, far from the fold point
-                const angleLabelDist = 25;
+                const angleLabelDist = 35;
                 const angleLabelX = p.x + nbisX * angleLabelDist;
                 const angleLabelY = p.y + nbisY * angleLabelDist;
 
@@ -714,15 +780,94 @@ export default function FlashingConfigurator() {
                       stroke="#000000"
                       strokeWidth="0.5"
                     />
-                    {/* Angle label — red, positioned in the corner away from lines */}
-                    <text
-                      x={angleLabelX}
-                      y={angleLabelY + 5}
-                      textAnchor="middle"
-                      className="text-[18px] font-bold fill-red-600 select-none pointer-events-none"
-                    >
-                      {angle}°
-                    </text>
+                    {/* Angle label — static by default, editable on click */}
+                    {(() => {
+                      const angOff = angleLabelOffsets[i] || { dx: 0, dy: 0 };
+                      const finalAngleX = angleLabelX + angOff.dx;
+                      const finalAngleY = angleLabelY + angOff.dy;
+                      const isEditingAng = editingAngle === i;
+
+                      const handleAngleChange = (val: number) => {
+                        const clamped = Math.max(0, Math.min(360, val));
+                        setFoldAngles((prev) => { const n = [...prev]; n[i - 1] = clamped; return n; });
+                        const foldPointIdx = i;
+                        if (foldPointIdx < points.length - 1 && foldPointIdx > 0) {
+                          const prevPt = points[foldPointIdx - 1];
+                          const curr = points[foldPointIdx];
+                          const nextPt = points[foldPointIdx + 1];
+                          const ddx = curr.x - prevPt.x;
+                          const ddy = curr.y - prevPt.y;
+                          const inAngle = Math.atan2(ddy, ddx);
+                          const outLen = Math.sqrt((nextPt.x - curr.x) ** 2 + (nextPt.y - curr.y) ** 2) || 60;
+                          const turnRad = ((180 - clamped) * Math.PI) / 180;
+                          const outAngle = inAngle + turnRad;
+                          setPoints((p) => {
+                            const np = [...p];
+                            np[foldPointIdx + 1] = {
+                              x: Math.round(curr.x + Math.cos(outAngle) * outLen),
+                              y: Math.round(curr.y + Math.sin(outAngle) * outLen),
+                            };
+                            return np;
+                          });
+                        }
+                      };
+
+                      const dragHandlers = {
+                        onMouseDown: (e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          if ((e.target as HTMLElement).tagName === 'INPUT') return;
+                          labelDragRef.current = { type: 'angle', idx: i, startX: e.clientX, startY: e.clientY, origDx: angOff.dx, origDy: angOff.dy };
+                          const onMove = (ev: MouseEvent) => {
+                            if (!labelDragRef.current) return;
+                            const ddx = ev.clientX - labelDragRef.current.startX;
+                            const ddy = ev.clientY - labelDragRef.current.startY;
+                            setAngleLabelOffsets((prev) => ({ ...prev, [i]: { dx: labelDragRef.current!.origDx + ddx, dy: labelDragRef.current!.origDy + ddy } }));
+                          };
+                          const onUp = () => { labelDragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+                          window.addEventListener('mousemove', onMove);
+                          window.addEventListener('mouseup', onUp);
+                        },
+                      };
+
+                      if (isEditingAng) {
+                        return (
+                          <foreignObject x={finalAngleX - 32} y={finalAngleY - 16} width="64" height="32"
+                            style={{ cursor: 'move' }}
+                            {...dragHandlers}
+                          >
+                            <div className="flex items-center justify-center h-full">
+                              <div className="flex items-center bg-white border-2 border-red-500 rounded-md px-1.5 py-0.5 shadow-md gap-0.5">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={360}
+                                  autoFocus
+                                  value={angle}
+                                  onChange={(e) => handleAngleChange(parseInt(e.target.value) || 0)}
+                                  onBlur={() => setEditingAngle(null)}
+                                  onKeyDown={(e) => { if (e.key === 'Enter') setEditingAngle(null); }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="w-[34px] text-[13px] font-bold text-red-600 text-center bg-transparent outline-none border-none p-0 cursor-text"
+                                />
+                                <span className="text-[12px] font-bold text-red-500">°</span>
+                              </div>
+                            </div>
+                          </foreignObject>
+                        );
+                      }
+
+                      return (
+                        <g
+                          style={{ cursor: 'move' }}
+                          {...dragHandlers}
+                          onClick={(e) => { e.stopPropagation(); setEditingAngle(i); }}
+                        >
+                          {/* Invisible hit area for dragging/clicking */}
+                          <rect x={finalAngleX - 30} y={finalAngleY - 14} width="60" height="28" rx="5" fill="transparent" />
+                          <text x={finalAngleX} y={finalAngleY + 5} textAnchor="middle" fontSize="16" fontWeight="bold" fill="#dc2626">{angle}°</text>
+                        </g>
+                      );
+                    })()}
                   </g>
                 );
               })}
@@ -732,31 +877,12 @@ export default function FlashingConfigurator() {
               {points.length >= 2 && renderFoldIndicator(points[points.length - 1], endFold, false)}
 
               {/* Draggable points — small open circles at all points like reference image */}
-              {points.map((p, i) => {
-                const isOnlyPoint = points.length === 1;
-                return (
-                  <g key={`pt-${i}`} className="point-handle" style={{ cursor: 'grab' }}>
-                    {/* Invisible larger hit area for dragging */}
-                    <circle
-                      cx={p.x}
-                      cy={p.y}
-                      r="14"
-                      fill="transparent"
-                      onMouseDown={(e) => handlePointMouseDown(i, e)}
-                    />
-                    {/* Small open circle at every point */}
-                    <circle
-                      cx={p.x}
-                      cy={p.y}
-                      r={isOnlyPoint ? 6 : 5}
-                      fill={isOnlyPoint ? '#16a34a' : 'white'}
-                      stroke={isOnlyPoint ? '#15803d' : '#6366f1'}
-                      strokeWidth="1.5"
-                      onMouseDown={(e) => handlePointMouseDown(i, e)}
-                    />
-                  </g>
-                );
-              })}
+              {points.map((p, i) => (
+                <g key={`pt-${i}`} className="point-handle" style={{ cursor: 'grab' }}>
+                  <circle cx={p.x} cy={p.y} r="14" fill="transparent" onMouseDown={(e) => handlePointMouseDown(i, e)} />
+                  <circle cx={p.x} cy={p.y} r="5" fill="white" stroke="#6366f1" strokeWidth="1.5" onMouseDown={(e) => handlePointMouseDown(i, e)} />
+                </g>
+              ))}
 
               {/* Colour side label — top right of diagram */}
               {points.length >= 2 && (
@@ -924,85 +1050,9 @@ export default function FlashingConfigurator() {
         </div>{/* end flex row */}
       </div>
 
-      {/* ── SEGMENT LENGTHS ── */}
-      <div>
-        <h3 className="text-sm font-bold text-steel-900 mb-3">Segment Lengths (mm)</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {segments.map((seg, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="flex items-center justify-center h-6 w-6 rounded-full bg-brand-100 text-brand-700 text-[10px] font-bold flex-shrink-0">
-                  {String.fromCharCode(65 + i)}
-                </span>
-                <input
-                  type="number"
-                  min={1}
-                  value={seg.lengthMm}
-                  onChange={(e) => updateSegmentLength(i, parseInt(e.target.value) || 0)}
-                  className="w-full rounded-lg border border-steel-300 px-2 py-1.5 text-sm text-center font-medium focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                />
-                <span className="text-xs text-steel-500 flex-shrink-0">mm</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Segment lengths and fold angles are now editable inline in the diagram above */}
 
-      {/* ── FOLD ANGLES ── */}
-      {foldAngles.length > 0 && (
-        <div>
-          <h3 className="text-sm font-bold text-steel-900 mb-3">Fold Angles (°)</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {foldAngles.map((angle, i) => (
-              <div key={i} className="flex items-center gap-1.5">
-                <span className="flex items-center justify-center h-6 w-6 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold flex-shrink-0">
-                  F{i + 1}
-                </span>
-                <input
-                  type="number"
-                  min={0}
-                  max={360}
-                  value={angle}
-                  onChange={(e) => {
-                    const val = Math.max(0, Math.min(360, parseInt(e.target.value) || 0));
-                    setFoldAngles((prev) => { const n = [...prev]; n[i] = val; return n; });
-
-                    // Reposition the point after the fold to match the new angle
-                    const foldPointIdx = i + 1; // interior fold point index in points array
-                    if (foldPointIdx < points.length - 1 && foldPointIdx > 0) {
-                      const prev2 = points[foldPointIdx - 1];
-                      const curr = points[foldPointIdx];
-                      const next2 = points[foldPointIdx + 1];
-
-                      // Incoming direction
-                      const dx = curr.x - prev2.x;
-                      const dy = curr.y - prev2.y;
-                      const inAngle = Math.atan2(dy, dx);
-
-                      // Outgoing segment length (keep same distance)
-                      const outDx = next2.x - curr.x;
-                      const outDy = next2.y - curr.y;
-                      const outLen = Math.sqrt(outDx * outDx + outDy * outDy) || 60;
-
-                      // New outgoing angle = incoming angle + (180 - fold angle)
-                      const turnRad = ((180 - val) * Math.PI) / 180;
-                      const outAngle = inAngle + turnRad;
-
-                      const newNext = {
-                        x: Math.round(curr.x + Math.cos(outAngle) * outLen),
-                        y: Math.round(curr.y + Math.sin(outAngle) * outLen),
-                      };
-                      setPoints((p) => { const np = [...p]; np[foldPointIdx + 1] = newNext; return np; });
-                    }
-                  }}
-                  className="w-full rounded-lg border border-steel-300 px-2 py-1.5 text-sm text-center font-medium focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                />
-                <span className="text-xs text-steel-500 flex-shrink-0">°</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Fold angles are now editable inline in the diagram above */}
 
       {/* ── MATERIAL & COLOUR ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

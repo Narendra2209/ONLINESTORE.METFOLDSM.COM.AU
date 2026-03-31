@@ -23,6 +23,15 @@ export const deleteAdminUser = catchAsync(async (req: Request, res: Response) =>
   ApiResponse.success({ res, message: 'User deleted' });
 });
 
+export const searchUserByEmail = catchAsync(async (req: Request, res: Response) => {
+  const email = req.query.email as string;
+  if (!email) {
+    return ApiResponse.success({ res, data: null });
+  }
+  const user = await adminUserService.findUserByEmail(email);
+  ApiResponse.success({ res, data: user });
+});
+
 export const listRoles = catchAsync(async (_req: Request, res: Response) => {
   const roles = await adminUserService.listRoles();
   ApiResponse.success({ res, data: roles });

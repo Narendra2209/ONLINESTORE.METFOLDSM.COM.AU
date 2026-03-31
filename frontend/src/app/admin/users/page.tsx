@@ -73,6 +73,49 @@ export default function AdminUsersPage() {
 
   useEffect(() => { fetchData(); }, []);
 
+  // Search existing user by email to assign role
+  const [searchEmail, setSearchEmail] = useState('');
+  const [searchResult, setSearchResult] = useState<AdminUser | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assignRoleId, setAssignRoleId] = useState('');
+
+  const handleSearchUser = async () => {
+    if (!searchEmail.trim()) return;
+    setSearching(true);
+    setSearchResult(null);
+    try {
+      const { data } = await api.get(`/admin/users/search?email=${encodeURIComponent(searchEmail.trim())}`);
+      if (data.data) {
+        setSearchResult(data.data);
+        setAssignRoleId(getRoleId(data.data.role));
+      } else {
+        toast.error('No user found with this email');
+      }
+    } catch {
+      toast.error('User not found');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleAssignRole = async () => {
+    if (!searchResult || !assignRoleId) return;
+    setSaving(true);
+    try {
+      await api.put(`/admin/users/${searchResult._id}`, { role: assignRoleId });
+      toast.success(`Role assigned to ${searchResult.email}`);
+      setShowAssignModal(false);
+      setSearchEmail('');
+      setSearchResult(null);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to assign role');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const openCreateUser = () => {
     setEditingUser(null);
     setFirstName('');
@@ -100,10 +143,7 @@ export default function AdminUsersPage() {
       toast.error('First name, last name, and email are required');
       return;
     }
-    if (!editingUser && !password) {
-      toast.error('Password is required for new users');
-      return;
-    }
+    // Password only required for brand new users (not existing email)
     setSaving(true);
     try {
       const payload: any = { firstName, lastName, email, role: roleId, isActive };
@@ -203,6 +243,51 @@ export default function AdminUsersPage() {
         <Button size="sm" onClick={openCreateUser} leftIcon={<Plus className="h-4 w-4" />}>
           Add Admin User
         </Button>
+      </div>
+
+      {/* Assign Role to Existing User */}
+      <div className="mt-6 rounded-xl bg-white border border-steel-100 p-5">
+        <h2 className="text-base font-semibold text-steel-900 mb-3">Assign Role to Existing User</h2>
+        <p className="text-xs text-steel-500 mb-3">Search by email to change a registered user's role</p>
+        <div className="flex gap-2">
+          <input
+            type="email"
+            value={searchEmail}
+            onChange={(e) => setSearchEmail(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearchUser()}
+            placeholder="Enter user email..."
+            className="flex-1 rounded-lg border border-steel-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+          />
+          <Button size="sm" onClick={handleSearchUser} isLoading={searching}>Search</Button>
+        </div>
+        {searchResult && (
+          <div className="mt-4 rounded-lg border border-brand-200 bg-brand-50/50 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-steel-900">{searchResult.firstName} {searchResult.lastName}</p>
+                <p className="text-xs text-steel-500">{searchResult.email}</p>
+                <p className="text-xs text-steel-400 mt-0.5">
+                  Current role: <Badge variant={roleColor(getRoleName(searchResult.role)) as any}>{getRoleName(searchResult.role).replace('_', ' ')}</Badge>
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={assignRoleId}
+                  onChange={(e) => setAssignRoleId(e.target.value)}
+                  className="rounded-lg border border-steel-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                >
+                  <option value="">Select role</option>
+                  {roles.map((r) => (
+                    <option key={r._id} value={r._id}>{r.displayName}</option>
+                  ))}
+                </select>
+                <Button size="sm" onClick={handleAssignRole} isLoading={saving} disabled={!assignRoleId}>
+                  Assign
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Admin Users */}
@@ -314,11 +399,11 @@ export default function AdminUsersPage() {
           </div>
           <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <Input
-            label={editingUser ? 'New Password (leave blank to keep)' : 'Password'}
+            label={editingUser ? 'New Password (leave blank to keep)' : 'Password (only for new users)'}
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            required={!editingUser}
+            helperText="Leave blank if user already has an account"
           />
           <div>
             <label className="block text-sm font-medium text-steel-700 mb-1">Role</label>

@@ -27,13 +27,15 @@ export default function CartPage() {
   const [hasSavedAddress, setHasSavedAddress] = useState(false);
   const [useSavedAddress, setUseSavedAddress] = useState(true);
   const [savedAddress, setSavedAddress] = useState<any>(null);
+  const [allAddresses, setAllAddresses] = useState<any[]>([]);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
-  // Auto-fill from saved default address
+  // Load all saved addresses
   useEffect(() => {
     if (!isAuthenticated) return;
     api.get('/auth/addresses').then(({ data }) => {
       const addresses = data.data || [];
+      setAllAddresses(addresses);
       const defaultAddr = addresses.find((a: any) => a.isDefault) || addresses[0];
       if (defaultAddr) {
         setHasSavedAddress(true);
@@ -49,6 +51,18 @@ export default function CartPage() {
       }
     }).catch(() => {});
   }, [isAuthenticated]);
+
+  const selectAddress = (addr: any) => {
+    setSavedAddress(addr);
+    setAddress({
+      name: addr.fullName || '',
+      phone: addr.phone || '',
+      street: addr.street || '',
+      city: addr.city || '',
+      state: addr.state || 'VIC',
+      postcode: addr.postcode || '',
+    });
+  };
 
   const BRANCHES = [
     { id: 'sunbury', name: 'METFOLD - SUNBURY', address: '51 McDougall Road, Sunbury, Victoria 3429', phone: '(03) 9732 0148' },
@@ -631,45 +645,53 @@ export default function CartPage() {
                 {/* Delivery Address */}
                 {deliveryMethod === 'delivery' && (
                   <div className="mt-4">
-                    {/* Saved address option */}
-                    {hasSavedAddress && useSavedAddress ? (
-                      <div className="rounded-lg border-2 border-brand-200 bg-brand-50/50 p-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-2">
-                            <CheckCircle className="h-4 w-4 text-brand-600 mt-0.5 flex-shrink-0" />
-                            <div className="text-sm">
-                              <p className="font-medium text-steel-900">{savedAddress?.fullName}</p>
-                              {savedAddress?.phone && <p className="text-steel-600 text-xs">{savedAddress.phone}</p>}
-                              <p className="text-steel-600 text-xs mt-1">{savedAddress?.street}</p>
-                              <p className="text-steel-600 text-xs">{savedAddress?.city}, {savedAddress?.state} {savedAddress?.postcode}</p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setUseSavedAddress(false)}
-                            className="text-xs font-medium text-brand-600 hover:text-brand-700"
+                    {/* Saved address dropdown */}
+                    {allAddresses.length > 0 && useSavedAddress ? (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-steel-700 mb-1">Select Address</label>
+                          <select
+                            value={savedAddress?._id || ''}
+                            onChange={(e) => {
+                              const addr = allAddresses.find((a: any) => a._id === e.target.value);
+                              if (addr) selectAddress(addr);
+                            }}
+                            className="w-full rounded-lg border border-steel-200 px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                           >
-                            Change
-                          </button>
+                            {allAddresses.map((addr: any) => (
+                              <option key={addr._id} value={addr._id}>
+                                {addr.fullName || addr.label}{addr.isDefault ? ' (Default)' : ''} — {addr.street}, {addr.city}
+                              </option>
+                            ))}
+                          </select>
                         </div>
+                        {savedAddress && (
+                          <div className="rounded-lg bg-steel-50 border border-steel-100 p-3 text-xs text-steel-600">
+                            <p className="font-medium text-steel-800">{savedAddress.fullName}</p>
+                            {savedAddress.phone && <p>{savedAddress.phone}</p>}
+                            <p className="mt-1">{savedAddress.street}</p>
+                            <p>{savedAddress.city}, {savedAddress.state} {savedAddress.postcode}</p>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUseSavedAddress(false);
+                            setAddress({ name: '', phone: '', street: '', city: '', state: 'VIC', postcode: '' });
+                          }}
+                          className="text-xs font-medium text-brand-600 hover:text-brand-700"
+                        >
+                          + Enter a different address
+                        </button>
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {hasSavedAddress && (
+                        {allAddresses.length > 0 && (
                           <button
                             type="button"
                             onClick={() => {
                               setUseSavedAddress(true);
-                              if (savedAddress) {
-                                setAddress({
-                                  name: savedAddress.fullName || '',
-                                  phone: savedAddress.phone || '',
-                                  street: savedAddress.street || '',
-                                  city: savedAddress.city || '',
-                                  state: savedAddress.state || 'VIC',
-                                  postcode: savedAddress.postcode || '',
-                                });
-                              }
+                              if (savedAddress) selectAddress(savedAddress);
                             }}
                             className="w-full text-xs font-medium text-brand-600 hover:text-brand-700 text-left mb-1"
                           >

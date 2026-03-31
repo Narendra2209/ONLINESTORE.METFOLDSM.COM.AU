@@ -7,6 +7,7 @@ const router = Router();
 
 // Admin users
 router.get('/', authenticate, authorizePermission('users', 'read'), adminUserController.listAdminUsers);
+router.get('/search', authenticate, authorizePermission('users', 'read'), adminUserController.searchUserByEmail);
 router.post('/', authenticate, authorizePermission('users', 'create'), adminUserController.createAdminUser);
 router.put('/:id', authenticate, authorizePermission('users', 'update'), adminUserController.updateAdminUser);
 router.delete('/:id', authenticate, authorizePermission('users', 'delete'), adminUserController.deleteAdminUser);
