@@ -8,41 +8,58 @@ import Footer from '@/components/layout/Footer';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://metfoldsm.com.au'),
   title: {
-    default: 'Metfold Sheet Metal | Roofing, Cladding & Rainwater Supplies Australia',
+    default: 'Metfold Sheet Metal | Colorbond Roofing, Cladding & Rainwater Supplies Australia',
     template: '%s | Metfold Sheet Metal',
   },
   description:
-    'Australia\'s trusted supplier of Colorbond roofing, wall cladding, fascia & gutter, downpipes, flashings and rainwater goods. Configure online with live pricing. Trade accounts welcome.',
+    'Australia\'s trusted supplier of Colorbond roofing sheets, wall cladding panels, fascia & gutter, downpipes, custom flashings and rainwater goods. Configure products online with instant live pricing. Trade accounts with volume discounts available.',
   keywords: [
-    'colorbond roofing',
-    'sheet metal supplies',
-    'wall cladding panels',
-    'fascia and gutter',
-    'rainwater goods',
-    'roof flashing',
+    'colorbond roofing sheets',
+    'colorbond roofing supplies Australia',
+    'sheet metal supplies online',
+    'wall cladding panels Australia',
+    'interlocking cladding panels',
+    'fascia and gutter supplies',
+    'custom roof flashing online',
     'downpipes Australia',
+    'rainwater goods supplier',
     'trade roofing supplies',
-    'interlocking cladding',
-    'roofing sheets Australia',
-    'metfold',
+    'roofing sheets Melbourne',
+    'colorbond colours',
+    'metal roofing online',
+    'buy roofing sheets online Australia',
+    'metfold sheet metal',
   ],
   openGraph: {
     type: 'website',
     locale: 'en_AU',
+    url: 'https://metfoldsm.com.au',
     siteName: 'Metfold Sheet Metal',
-    title: 'Metfold Sheet Metal | Roofing, Cladding & Rainwater Supplies',
-    description: 'Premium Colorbond roofing, cladding, rainwater goods and accessories. Configure online with live pricing and instant quotes.',
+    title: 'Metfold Sheet Metal | Premium Colorbond Roofing & Cladding Supplies',
+    description: 'Configure Colorbond roofing, cladding, flashings and rainwater goods online with instant live pricing. Australia-wide delivery. Trade accounts welcome.',
+    images: [{ url: '/images/logo.png', width: 1200, height: 630, alt: 'Metfold Sheet Metal — Roofing & Cladding Supplies' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Metfold Sheet Metal | Colorbond Roofing & Cladding Supplies',
+    description: 'Premium Colorbond roofing, cladding and rainwater products. Configure online with live pricing.',
   },
   robots: {
     index: true,
     follow: true,
-    googleBot: { index: true, follow: true },
+    googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 },
+  },
+  alternates: {
+    canonical: 'https://metfoldsm.com.au',
   },
   icons: {
     icon: '/images/navicon.png',
     apple: '/images/navicon.png',
   },
+  verification: {},
+  category: 'ecommerce',
 };
 
 export default function RootLayout({

@@ -264,6 +264,53 @@
 }
 .animate-marquee:hover { animation-play-state: paused; }
 
+/* Product ribbon — CSS scroll with 3D center pop */
+@keyframes ribbon-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.ribbon-track {
+  display: flex;
+  width: max-content;
+  animation: ribbon-scroll 40s linear infinite;
+}
+.ribbon-track:hover {
+  animation-play-state: paused;
+}
+
+/* Each card gets center-pop via CSS perspective container */
+.ribbon-viewport {
+  perspective: 1200px;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 15%,
+    black 85%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 15%,
+    black 85%,
+    transparent 100%
+  );
+}
+.ribbon-card {
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.5s ease,
+              border-color 0.5s ease;
+}
+.ribbon-card:hover {
+  transform: scale(1.08) translateY(-12px) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 116, 197, 0.25);
+  border-color: rgba(0, 116, 197, 0.3);
+  z-index: 20;
+}
+.ribbon-track .ribbon-card {
+  animation: ribbon-card-pop 40s linear infinite;
+}
+
 /* Gradient border animation */
 @keyframes border-spin {
   from { background-position: 0% 50%; }
