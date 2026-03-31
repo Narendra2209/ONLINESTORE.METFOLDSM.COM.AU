@@ -92,9 +92,9 @@ export default function CartPage() {
 
   // Generate PDF matching Metfold order sheet format
   const downloadCartPdf = useCallback(async (orderNum: string = '') => {
-    const doc = new jsPDF('l', 'mm', 'a4'); // Landscape
-    const pageWidth = 297;
-    const pageHeight = 210;
+    const doc = new jsPDF('p', 'mm', 'a4'); // Portrait A4
+    const pageWidth = 210;
+    const pageHeight = 297;
     const margin = 8;
     const contentWidth = pageWidth - margin * 2;
     let y = margin;
@@ -144,7 +144,8 @@ export default function CartPage() {
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
 
-      const row = 4; // line spacing
+      const row = 4.5; // line spacing for portrait
+      const rCol = pageWidth - margin - 60; // right-column x (for Dispatch, PO No, Phone)
 
       // Row 1 — Date | Sched Delivery | PO No
       const schedLabel = deliveryMethod === 'pickup' ? 'Sched. Pickup-' : 'Sched. Delivery-';
@@ -156,11 +157,11 @@ export default function CartPage() {
       doc.setFont('helvetica', 'normal');
       doc.text(dateStr, margin + 12, y);
       doc.setFont('helvetica', 'bold');
-      doc.text(schedLabel, margin + 55, y);
+      doc.text(schedLabel, margin + 52, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(schedFormatted, margin + 82, y);
+      doc.text(schedFormatted, margin + 78, y);
       doc.setFont('helvetica', 'bold');
-      doc.text('PO No.', margin + 185, y);
+      doc.text('PO No.', rCol, y);
       y += row;
 
       // Row 2 — Contact | Order Placed by | Phone
@@ -170,13 +171,13 @@ export default function CartPage() {
       doc.setFont('helvetica', 'normal');
       doc.text(contactName, margin + 18, y);
       doc.setFont('helvetica', 'bold');
-      doc.text('Order Placed by-', margin + 100, y);
+      doc.text('Order Placed by-', margin + 80, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(user ? `${user.firstName} ${user.lastName}` : '', margin + 130, y);
+      doc.text(user ? `${user.firstName} ${user.lastName}` : '', margin + 110, y);
       doc.setFont('helvetica', 'bold');
-      doc.text('Phone-', margin + 185, y);
+      doc.text('Phone-', rCol, y);
       doc.setFont('helvetica', 'normal');
-      if (contactPhone) doc.text(contactPhone, margin + 200, y);
+      if (contactPhone) doc.text(contactPhone, rCol + 14, y);
       y += row;
 
       // Row 3 — Customer | Dispatch
@@ -185,18 +186,20 @@ export default function CartPage() {
       doc.setFont('helvetica', 'normal');
       doc.text(user?.email || '', margin + 22, y);
       doc.setFont('helvetica', 'bold');
-      doc.text('Dispatch-', margin + 185, y);
+      doc.text('Dispatch-', rCol, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(deliveryMethod === 'delivery' ? 'Delivery' : 'Pickup', margin + 204, y);
+      doc.text(deliveryMethod === 'delivery' ? 'Delivery' : 'Pickup', rCol + 18, y);
       y += row;
 
-      // Row 4 — Delivery Address
+      // Row 4 — Delivery Address (full width, may wrap)
       doc.setFont('helvetica', 'bold');
       doc.text('Delivery Address:', margin, y);
       doc.setFont('helvetica', 'normal');
       if (deliveryMethod === 'delivery') {
         const addrLine = [address.street, address.city, address.state, address.postcode].filter(Boolean).join(', ');
-        doc.text(addrLine, margin + 36, y);
+        const wrapped = doc.splitTextToSize(addrLine, contentWidth - 38);
+        doc.text(wrapped, margin + 36, y);
+        y += (wrapped.length - 1) * row;
       } else {
         const branch = BRANCHES.find(b => b.id === selectedBranch);
         doc.text(branch ? `PICKUP: ${branch.name} — ${branch.address}` : '', margin + 36, y);
@@ -218,20 +221,19 @@ export default function CartPage() {
 
     drawHeader();
 
-    // ═══════════ PRODUCT ITEMS — 2 per row ═══════════
-    const colWidth = (contentWidth - 4) / 2; // 2 columns with 4mm gap
-    const diagramW = colWidth * 0.6;
-    const infoW = colWidth * 0.4;
-    const itemH = 70;
+    // ═══════════ PRODUCT ITEMS — 1 per row (portrait) ═══════════
+    const colWidth = contentWidth; // full width per item
+    const diagramW = Math.round(colWidth * 0.55);
+    const infoW = colWidth - diagramW;
+    const itemH = 80;
 
-    for (let idx = 0; idx < items.length; idx += 2) {
+    for (let idx = 0; idx < items.length; idx++) {
       checkPage(itemH + 5);
       const rowY = y;
 
-      for (let col = 0; col < 2; col++) {
-        if (idx + col >= items.length) break;
-        const item = items[idx + col];
-        const xStart = margin + col * (colWidth + 4);
+      {
+        const item = items[idx];
+        const xStart = margin;
 
         // ── OUTER BOX ──
         doc.setDrawColor(0, 0, 0);
@@ -343,7 +345,7 @@ export default function CartPage() {
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(0, 0, 0);
-        const tagVal = getAttr(item, 'Tag Name') || `${idx + col + 1}`;
+        const tagVal = getAttr(item, 'Tag Name') || `${idx + 1}`;
         doc.text(`Tag: ${tagVal}`, infoX, iY);
         iY += 5;
 
@@ -361,7 +363,7 @@ export default function CartPage() {
       }
 
       y = rowY + itemH + 3;
-    }
+    } // end items loop
 
     // ═══════════ FOOTER ═══════════
     doc.setFontSize(7);

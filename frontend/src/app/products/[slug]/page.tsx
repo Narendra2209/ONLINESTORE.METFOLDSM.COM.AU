@@ -128,6 +128,7 @@ export default function ProductDetailPage() {
               <div
                 ref={imageContainerRef}
                 className="relative aspect-square rounded-2xl bg-steel-50 border border-steel-100 flex items-center justify-center overflow-hidden cursor-crosshair"
+                // className="relative w-[400px] h-[400px] rounded-2xl bg-steel-50 border border-steel-100 flex items-center justify-center overflow-hidden cursor-crosshair mx-auto"
                 onMouseEnter={() => activeImage?.url && setZoom(true)}
                 onMouseLeave={() => setZoom(false)}
                 onMouseMove={handleMouseMove}

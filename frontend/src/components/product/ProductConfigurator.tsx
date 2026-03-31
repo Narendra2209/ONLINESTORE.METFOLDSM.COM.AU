@@ -1257,17 +1257,43 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
             const displayMm = selectedVal ? codeToMm(selectedVal) : '';
             const isInvalid = displayMm && !mmValues.some((v) => v.mm === displayMm);
             const isDownpipeLength = !!(product.category?.slug?.includes('downpipe') && attrName === 'Length');
+            const isDambuster = !!(product.category?.slug?.includes('dambuster') || product.category?.name?.toLowerCase().includes('dambuster'));
+            const dimLabel = isDambuster && attrName === 'Length' ? 'Size' : attrName;
+
+            // For dambuster products, extract size codes from variant SKUs (e.g., "R3-350Z" → "3-350")
+            const dambusterSizeMap = useMemo(() => {
+              if (!isDambuster || attrName !== 'Length' || !product.variants) return {};
+              const map: Record<string, string> = {};
+              for (const v of product.variants) {
+                const lenAttr = v.attributes.find((a) => a.attributeName === 'Length');
+                if (!lenAttr) continue;
+                if (map[lenAttr.value]) continue; // already mapped
+                const sku = v.sku.toUpperCase();
+                // Strip "R" prefix, then strip material suffixes from the end
+                let sizeCode = sku.replace(/^R/i, '');
+                sizeCode = sizeCode.replace(/(FGAL|FCB|FZ|GAL|CB|Z)$/i, '');
+                if (sizeCode) map[lenAttr.value] = sizeCode;
+              }
+              return map;
+            }, [isDambuster, attrName, product.variants]);
+
+            const getDambusterDisplay = (code: string, mm: string) => {
+              if (!isDambuster || attrName !== 'Length') return `${mm}mm`;
+              return dambusterSizeMap[code] || `${mm}mm`;
+            };
+
+            const selectedDisplay = selectedVal ? getDambusterDisplay(selectedVal, displayMm) : '';
 
             return (
               <div key={attrName}>
                 <label className="mb-2 block text-sm font-semibold text-steel-700">
-                  {attrName} (mm)
-                  {displayMm && !isInvalid && (
-                    <span className="ml-2 font-normal text-steel-500">— {displayMm}mm</span>
+                  {dimLabel}
+                  {selectedDisplay && !isInvalid && (
+                    <span className="ml-2 font-normal text-steel-500">— {selectedDisplay}</span>
                   )}
                 </label>
-                {/* Hide manual input for downpipe Length — buttons only */}
-                {!isDownpipeLength && (
+                {/* Hide manual input for downpipe Length and dambuster Size — buttons only */}
+                {!isDownpipeLength && !isDambuster && (
                   <>
                     <input
                       type="number"
@@ -1275,7 +1301,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
                       max={mmNums[mmNums.length - 1]}
                       step={50}
                       value={displayMm}
-                      placeholder={`Enter ${attrName.toLowerCase()} (${mmNums[0]}mm – ${mmNums[mmNums.length - 1]}mm)`}
+                      placeholder={`Enter ${dimLabel.toLowerCase()} (${mmNums[0]}mm – ${mmNums[mmNums.length - 1]}mm)`}
                       onChange={(e) => {
                         const mmInput = e.target.value;
                         if (!mmInput) { handleAttributeChange(attrName, ''); return; }
@@ -1309,7 +1335,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
                           : 'border-steel-200 text-steel-500 hover:border-steel-300'
                       )}
                     >
-                      {mm}mm
+                      {getDambusterDisplay(code, mm)}
                     </button>
                   ))}
                 </div>
@@ -1443,7 +1469,11 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
                   ) : (
                     <div className="flex items-baseline justify-between">
                       <span className="text-sm text-steel-600">
-                        {(userLen || matchedLenMetres) > 0 ? `Per ${userLen || matchedLenMetres}m sheet:` : 'Unit price:'}
+                        {(() => {
+                          const isDambuster = product.category?.slug?.includes('dambuster') || product.category?.name?.toLowerCase().includes('dambuster');
+                          if (isDambuster) return 'Unit price:';
+                          return (userLen || matchedLenMetres) > 0 ? `Per ${userLen || matchedLenMetres}m sheet:` : 'Unit price:';
+                        })()}
                       </span>
                       <span className="text-lg font-bold text-steel-900">
                         {formatCurrency(pricePerUnit)}

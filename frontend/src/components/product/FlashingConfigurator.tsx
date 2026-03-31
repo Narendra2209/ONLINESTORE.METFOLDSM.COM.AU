@@ -181,10 +181,9 @@ export default function FlashingConfigurator() {
     }
   }, [points.length, foldAngles]);
 
-  // Reset colour and gauge when material changes
+  // Reset colour when material changes
   useEffect(() => {
     setColour('');
-    setGauge('0.55mm');
   }, [material]);
 
   // ── CALCULATIONS ──
@@ -1065,7 +1064,12 @@ export default function FlashingConfigurator() {
             {Object.keys(COLOUR_OPTIONS).map((mat) => (
               <button
                 key={mat}
-                onClick={() => setMaterial(mat)}
+                onClick={() => {
+                  setMaterial(mat);
+                  // Auto-select gauge: first option for the chosen material
+                  const gauges = GAUGE_BY_MATERIAL[mat] || ['0.55mm'];
+                  setGauge(gauges[0]);
+                }}
                 className={cn(
                   'px-3 py-2 rounded-lg text-sm font-medium border-2 transition-all',
                   material === mat

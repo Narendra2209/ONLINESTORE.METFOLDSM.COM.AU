@@ -41,7 +41,7 @@ export default function AdminImportsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [importType, setImportType] = useState<'products' | 'prices' | 'stock' | 'cladding'>('products');
+  const [importType, setImportType] = useState<'products' | 'prices' | 'stock' | 'cladding' | 'dambuster'>('products');
   const [expandedJob, setExpandedJob] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,8 +102,8 @@ export default function AdminImportsPage() {
       return;
     }
 
-    // Cladding import — skip preview, upload directly
-    if (importType === 'cladding') {
+    // Cladding / Dambuster import — skip preview, upload directly
+    if (importType === 'cladding' || importType === 'dambuster') {
       setPreviewFile(file);
       setImporting(true);
       setImportProgress(0);
@@ -111,7 +111,8 @@ export default function AdminImportsPage() {
       try {
         const formData = new FormData();
         formData.append('file', file);
-        const { data } = await api.post('/admin/cladding/import', formData, {
+        const importUrl = importType === 'dambuster' ? '/admin/dambuster/import' : '/admin/cladding/import';
+        const { data } = await api.post(importUrl, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
           timeout: 300000,
           onUploadProgress: (progressEvent) => {
@@ -121,7 +122,8 @@ export default function AdminImportsPage() {
           },
         });
         const msg = data.data;
-        toast.success(`Cladding import done: ${msg?.created || 0} panels imported, ${msg?.errors?.length || 0} errors`);
+        const label = importType === 'dambuster' ? 'Dambuster' : 'Cladding';
+        toast.success(`${label} import done: ${msg?.created || 0} created, ${msg?.updated || 0} updated, ${msg?.errors?.length || 0} errors`);
         if (msg?.errors?.length > 0) {
           console.warn('Cladding import errors:', msg.errors);
         }
@@ -173,8 +175,10 @@ export default function AdminImportsPage() {
       formData.append('file', previewFile);
       formData.append('type', importType);
 
-      // Cladding panels use a separate endpoint
-      const uploadUrl = importType === 'cladding' ? '/admin/cladding/import' : '/admin/imports/upload';
+      // Cladding / Dambuster panels use separate endpoints
+      const uploadUrl = importType === 'cladding' ? '/admin/cladding/import'
+        : importType === 'dambuster' ? '/admin/dambuster/import'
+        : '/admin/imports/upload';
 
       const { data } = await api.post(uploadUrl, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -191,8 +195,9 @@ export default function AdminImportsPage() {
       });
 
       const msg = data.data;
-      if (importType === 'cladding') {
-        toast.success(`Cladding import done: ${msg?.created || 0} panels imported, ${msg?.errors?.length || 0} errors`);
+      if (importType === 'cladding' || importType === 'dambuster') {
+        const label = importType === 'dambuster' ? 'Dambuster' : 'Cladding';
+        toast.success(`${label} import done: ${msg?.created || 0} created, ${msg?.updated || 0} updated, ${msg?.errors?.length || 0} errors`);
       } else if (msg?.successCount > 0 || msg?.errorCount > 0) {
         toast.success(`Import done: ${msg.successCount} success, ${msg.errorCount} errors`);
       } else {
@@ -200,7 +205,7 @@ export default function AdminImportsPage() {
       }
       setPreviewData(null);
       setPreviewFile(null);
-      if (importType !== 'cladding') fetchJobs();
+      if (importType !== 'cladding' && importType !== 'dambuster') fetchJobs();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Import failed');
     } finally {
@@ -295,6 +300,7 @@ export default function AdminImportsPage() {
               <option value="prices">Prices Only</option>
               <option value="stock">Stock Levels Only</option>
               <option value="cladding">Cladding Panels</option>
+              <option value="dambuster">Dambuster Products</option>
             </select>
           </div>
         </div>
@@ -509,6 +515,14 @@ export default function AdminImportsPage() {
                 <p><strong>Required columns:</strong> PRODUCT name, MATERIAL, RIB, COVER, base price, SKU</p>
                 <p><strong>Optional:</strong> GAUGE, UOM (defaults to LM)</p>
                 <p className="text-steel-500">Each row = one variant. Price = base price x length x quantity.</p>
+              </div>
+            )}
+            {importType === 'dambuster' && (
+              <div className="text-xs text-steel-600 space-y-2">
+                <p><strong>Required columns:</strong> PRODUCT NAME, Inventory (SKU), BASE PRICE</p>
+                <p><strong>Recommended:</strong> Material, TYPE (Left Side / Right Side), Description</p>
+                <p><strong>Optional:</strong> Currency (defaults to AUD)</p>
+                <p className="text-steel-500">Each row = one dambuster variant. Price = base price x quantity.</p>
               </div>
             )}
           </div>

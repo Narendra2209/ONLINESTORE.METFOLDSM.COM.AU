@@ -100,7 +100,7 @@ export default function Header() {
         <div className="container-main flex items-center justify-between py-1.5 sm:py-2.5 text-xs sm:text-sm">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <Phone className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-brand-400" />
-            <span className="font-semibold">1300 XXX XXX</span>
+            <span className="font-semibold">1800 638 3635</span>
             <span className="hidden md:inline text-steel-400 mx-2">|</span>
             <span className="hidden md:inline text-steel-300">Australian Industrial Roofing & Sheet Metal Supplies</span>
           </div>
