@@ -98,15 +98,15 @@ export default function ProductCard({ product }: ProductCardProps) {
         transition-all duration-300 hover:shadow-xl hover:shadow-steel-200/50 hover:-translate-y-1 hover:border-brand-200"
     >
       {/* Image */}
-      <div className="relative aspect-[4/3] bg-white overflow-hidden flex items-center justify-center">
+      <div className="relative w-full h-0 pb-[100%] bg-white overflow-hidden">
         {imageUrl ? (
           <img
             src={imageUrl}
             alt={product.name}
-            className="h-full w-full object-contain p-2 transition-transform duration-500 group-hover:scale-105"
+            className="absolute inset-0 w-full h-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-2">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
             <Package className="h-12 w-12 text-steel-200" />
             {isAdmin && (
               <>

@@ -1260,7 +1260,8 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
             const isDambuster = !!(product.category?.slug?.includes('dambuster') || product.category?.name?.toLowerCase().includes('dambuster'));
             const dimLabel = isDambuster && attrName === 'Length' ? 'Size' : attrName;
 
-            // For dambuster products, extract size codes from variant SKUs (e.g., "R3-350Z" → "3-350")
+            // For dambuster products, extract size numbers from variant SKUs
+            // e.g., "R3-350Z" → "3-350", "CSO200L" → "200", "XSO300" → "300", "CR400" → "400"
             const dambusterSizeMap = useMemo(() => {
               if (!isDambuster || attrName !== 'Length' || !product.variants) return {};
               const map: Record<string, string> = {};
@@ -1269,10 +1270,9 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
                 if (!lenAttr) continue;
                 if (map[lenAttr.value]) continue; // already mapped
                 const sku = v.sku.toUpperCase();
-                // Strip "R" prefix, then strip material suffixes from the end
-                let sizeCode = sku.replace(/^R/i, '');
-                sizeCode = sizeCode.replace(/(FGAL|FCB|FZ|GAL|CB|Z)$/i, '');
-                if (sizeCode) map[lenAttr.value] = sizeCode;
+                // Extract only the numeric portion (with dashes between numbers, e.g. "3-350")
+                const match = sku.match(/(\d+(?:-\d+)*)/);
+                if (match) map[lenAttr.value] = match[1];
               }
               return map;
             }, [isDambuster, attrName, product.variants]);
