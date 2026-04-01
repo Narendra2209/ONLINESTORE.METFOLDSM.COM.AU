@@ -117,25 +117,24 @@ export default function CategoryPage() {
         {/* Subcategories */}
         {category.children && category.children.length > 0 && (
           <div className="mb-6 sm:mb-10">
-            <h2 className="text-base sm:text-lg font-semibold text-steel-900 mb-3 sm:mb-4">Browse Subcategories</h2>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <h2 className="text-sm font-semibold text-steel-900 mb-2">Browse Subcategories</h2>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {category.children.map((sub) => (
                 <Link
                   key={sub._id}
                   href={`/categories/${sub.slug}`}
-                  className="group flex items-center justify-between rounded-xl bg-white p-5 border border-steel-100
-                    hover:border-brand-200 hover:shadow-lg hover:shadow-brand-100/30 hover:-translate-y-0.5
-                    transition-all duration-300"
+                  className="group flex items-center gap-1 px-2 py-1.5 rounded-md
+                    hover:bg-brand-50 transition-all duration-200"
                 >
                   <div>
-                    <span className="font-semibold text-steel-800 group-hover:text-brand-600 transition-colors">
+                    <span className="text-sm font-medium text-brand-600 group-hover:text-brand-700 transition-colors">
                       {sub.name}
                     </span>
                     {sub.productCount !== undefined && sub.productCount > 0 && (
-                      <span className="block text-xs text-steel-400 mt-0.5">{sub.productCount} products</span>
+                      <span className="block text-[11px] text-steel-400">{sub.productCount} products</span>
                     )}
                   </div>
-                  <ArrowRight className="h-4 w-4 text-steel-300 group-hover:text-brand-500 group-hover:translate-x-1 transition-all duration-200" />
+                  <ArrowRight className="h-3 w-3 text-steel-300 group-hover:text-brand-400 transition-colors" />
                 </Link>
               ))}
             </div>

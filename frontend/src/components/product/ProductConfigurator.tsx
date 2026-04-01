@@ -20,6 +20,9 @@ interface ProductConfiguratorProps {
 // Dimension attribute names that store codes (value × 100 = mm)
 const DIMENSION_ATTRS = ['Length', 'Width', 'Depth'];
 
+// Dimension letter labels (e.g. Width = A, Length = B, Depth = C) for sump/rainhead products
+const DIMENSION_LETTERS: Record<string, string> = { Width: 'A', Length: 'B', Depth: 'C' };
+
 // Preferred display order for variant attributes
 const ATTR_ORDER = ['Material', 'Colour', 'Rib Size', 'Cover Width', 'Thickness', 'Width', 'Length', 'Depth'];
 
@@ -125,7 +128,9 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
   const [length, setLength] = useState<number | undefined>(undefined);
   const [quantity, setQuantity] = useState(1);
   const [selectedColour, setSelectedColour] = useState<string>('');
-  const { addItem, items, removeItem, updateQuantity, clearCart } = useCartStore();
+  // Raw typed values for dimension inputs — separate from the snapped/resolved code
+  const [dimRawInputs, setDimRawInputs] = useState<Record<string, string>>({});
+  const { addItem, items, removeItem, updateQuantity } = useCartStore();
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
 
@@ -425,9 +430,9 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
   if (false as boolean) {
     const claddingMaterial = '', claddingRib = '', claddingCover = 0, claddingLength = 0, claddingColour = '';
     const setCladdingMaterial = (_: any) => {}, setCladdingRib = (_: any) => {}, setCladdingCover = (_: any) => {}, setCladdingLength = (_: any) => {}, setCladdingColour = (_: any) => {};
-    const claddingPanels: any[] = [], claddingLoaded = true, isCladding = false;
+    const claddingPanels: any[] = [], claddingLoaded = true;
     const COLOUR_CODES: Record<string, string> = {};
-    const getColourCode = (c: string) => COLOUR_CODES[c] || c.substring(0, 2);
+    const getColourCode = (c: string) => COLOUR_CODES[c] || c.substring(0, 2); // eslint-disable-line @typescript-eslint/no-unused-vars
     const cMaterials: string[] = [], cRibs: string[] = [], cCovers: number[] = [];
     const cMatchedPanel: any = null, needsColour = false, cColours: any[] = [], effectiveColour = '';
     const cSkuWithColour = '';
@@ -884,34 +889,62 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
         toast.error('Length must be between 0.4m and 13m');
         return;
       } else {
-        // Per-piece products (rainheads, sumps, downpipes, polycarbonate, etc.)
-        const lineTotal = unitPriceVal * quantity;
-
-        // For products with large Length values (polycarbonate), show user's custom length in metres
-        const userLen = parseFloat(selectedAttributes['_userLength'] || '') || 0;
-        const cartAttrs = attrEntries
-          .filter(a => !a.attributeName.startsWith('_'))
-          .map(a => {
-            if (a.attributeName === 'Length' && userLen > 0) {
-              return { attributeName: 'Length', value: `${userLen}m` };
-            }
-            return a;
+        // Check if this is a cladding product with a user-entered length
+        const isCladding = !!(
+          product.category?.slug?.includes('cladding') ||
+          product.category?.name?.toLowerCase().includes('cladding')
+        );
+        const hasCoverWidth = !!variantAttributeOptions['Cover Width'];
+        if (isCladding && hasCoverWidth) {
+          if (!length || length < 0.1 || length > 8) {
+            toast.error('Length must be between 0.1m and 8m');
+            return;
+          }
+          const lineTotal = unitPriceVal * length * quantity;
+          addItem({
+            _id: '',
+            product: {
+              _id: product._id, name: product.name, slug: product.slug,
+              sku: cartSku,
+              images: product.images.map((i) => ({ url: i.url, alt: i.alt })),
+            },
+            selectedAttributes: attrEntries.filter(a => !a.attributeName.startsWith('_')),
+            pricingModel: 'per_metre',
+            unitPrice: unitPriceVal,
+            length,
+            quantity,
+            lineTotal,
           });
+        } else {
+          // Per-piece products (rainheads, sumps, downpipes, polycarbonate, etc.)
+          const lineTotal = unitPriceVal * quantity;
 
-        addItem({
-          _id: '',
-          product: {
-            _id: product._id, name: product.name, slug: product.slug,
-            sku: cartSku,
-            images: product.images.map((i) => ({ url: i.url, alt: i.alt })),
-          },
-          selectedAttributes: cartAttrs,
-          pricingModel: 'per_piece',
-          unitPrice: unitPriceVal,
-          length: userLen > 0 ? userLen : undefined,
-          quantity,
-          lineTotal,
-        });
+          // For products with large Length values (polycarbonate), show user's custom length in metres
+          const userLen = parseFloat(selectedAttributes['_userLength'] || '') || 0;
+          const cartAttrs = attrEntries
+            .filter(a => !a.attributeName.startsWith('_'))
+            .map(a => {
+              if (a.attributeName === 'Length' && userLen > 0) {
+                return { attributeName: 'Length', value: `${userLen}m` };
+              }
+              return a;
+            });
+
+          addItem({
+            _id: '',
+            product: {
+              _id: product._id, name: product.name, slug: product.slug,
+              sku: cartSku,
+              images: product.images.map((i) => ({ url: i.url, alt: i.alt })),
+            },
+            selectedAttributes: cartAttrs,
+            pricingModel: 'per_piece',
+            unitPrice: unitPriceVal,
+            length: userLen > 0 ? userLen : undefined,
+            quantity,
+            lineTotal,
+          });
+        }
       }
       toast.success('Added to cart');
       // Open the side drawer
@@ -1232,14 +1265,13 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
                     <button
                       key={code}
                       onClick={() => {
-                        // Single functional update to keep _userLength and Length in sync
                         setSelectedAttributes((prev) => ({ ...prev, [attrName]: code, '_userLength': metres }));
                       }}
                       className={cn(
-                        'px-3 py-1.5 rounded-md text-xs font-medium border transition-all',
+                        'px-2 py-1 rounded text-xs font-medium transition-all',
                         selectedVal === code
-                          ? 'border-brand-600 bg-brand-50 text-brand-700'
-                          : 'border-steel-200 text-steel-500 hover:border-steel-300'
+                          ? 'bg-brand-600 text-white'
+                          : 'text-steel-500 hover:text-steel-700 hover:bg-steel-100'
                       )}
                     >
                       {metres}m
@@ -1282,12 +1314,36 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
               return dambusterSizeMap[code] || `${mm}mm`;
             };
 
+            // Is this a sump/rainhead product? Show letter labels A/B/C
+            const isSump = !!(
+              product.category?.slug?.includes('sump') ||
+              product.category?.name?.toLowerCase().includes('sump') ||
+              product.category?.slug?.includes('rainhead') ||
+              product.category?.name?.toLowerCase().includes('rainhead') ||
+              product.category?.slug?.includes('rainheads') ||
+              product.category?.name?.toLowerCase().includes('rainheads')
+            );
+            const letterLabel = isSump && DIMENSION_LETTERS[attrName] ? ` (${DIMENSION_LETTERS[attrName]})` : '';
+
             const selectedDisplay = selectedVal ? getDambusterDisplay(selectedVal, displayMm) : '';
+
+            // Round UP to next standard size (ceiling) — e.g. 250 → 300
+            const findNextHigher = (mmInput: string) => {
+              if (!mmInput) return '';
+              const val = parseInt(mmInput);
+              if (isNaN(val)) return '';
+              const sorted = [...mmValues].sort((a, b) => parseInt(a.mm) - parseInt(b.mm));
+              // Find first standard value >= input
+              const higher = sorted.find((v) => parseInt(v.mm) >= val);
+              if (higher) return higher.code;
+              // If input exceeds all standards, use max
+              return sorted[sorted.length - 1].code;
+            };
 
             return (
               <div key={attrName}>
                 <label className="mb-2 block text-sm font-semibold text-steel-700">
-                  {dimLabel}
+                  {dimLabel}{letterLabel}
                   {selectedDisplay && !isInvalid && (
                     <span className="ml-2 font-normal text-steel-500">— {selectedDisplay}</span>
                   )}
@@ -1298,41 +1354,40 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
                     <input
                       type="number"
                       min={mmNums[0]}
-                      max={mmNums[mmNums.length - 1]}
-                      step={50}
-                      value={displayMm}
+                      step={1}
+                      value={dimRawInputs[attrName] ?? displayMm}
                       placeholder={`Enter ${dimLabel.toLowerCase()} (${mmNums[0]}mm – ${mmNums[mmNums.length - 1]}mm)`}
                       onChange={(e) => {
                         const mmInput = e.target.value;
+                        // Always store the raw typed value so user can type freely
+                        setDimRawInputs((prev) => ({ ...prev, [attrName]: mmInput }));
                         if (!mmInput) { handleAttributeChange(attrName, ''); return; }
-                        handleAttributeChange(attrName, mmToCode(mmInput));
+                        // Round UP to next standard size for pricing
+                        const nextCode = findNextHigher(mmInput);
+                        const code = nextCode || mmToCode(mmInput);
+                        handleAttributeChange(attrName, code);
                       }}
                       className={cn(
                         'w-full rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500',
-                        isInvalid
-                          ? 'border-red-300 bg-red-50 text-red-700'
-                          : selectedVal && availableValues.includes(selectedVal)
-                            ? 'border-brand-600 bg-brand-50 text-brand-700'
-                            : 'border-steel-200 text-steel-600'
+                        'border-steel-200 text-steel-600 focus:border-brand-500'
                       )}
                     />
-                    {isInvalid && (
-                      <p className="mt-1 text-xs text-red-500">
-                        Not a standard size. Available: {mmValues.map((v) => `${v.mm}mm`).join(', ')}
-                      </p>
-                    )}
                   </>
                 )}
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {mmValues.sort((a, b) => parseInt(a.mm) - parseInt(b.mm)).map(({ code, mm }) => (
                     <button
                       key={code}
-                      onClick={() => handleAttributeChange(attrName, code)}
+                      onClick={() => {
+                        handleAttributeChange(attrName, code);
+                        // Clear raw input so button selection is shown cleanly
+                        setDimRawInputs((prev) => ({ ...prev, [attrName]: mm }));
+                      }}
                       className={cn(
-                        'px-3 py-1.5 rounded-md text-xs font-medium border transition-all',
+                        'px-2 py-1 rounded text-xs font-medium transition-all',
                         selectedVal === code
-                          ? 'border-brand-600 bg-brand-50 text-brand-700'
-                          : 'border-steel-200 text-steel-500 hover:border-steel-300'
+                          ? 'bg-brand-600 text-white'
+                          : 'text-steel-500 hover:text-steel-700 hover:bg-steel-100'
                       )}
                     >
                       {getDambusterDisplay(code, mm)}
@@ -1370,6 +1425,39 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
             </div>
           );
         })}
+
+        {/* Length input for cladding panels (variant-based, has Cover Width but no Length variant) */}
+        {(() => {
+          const isCladding = !!(
+            product.category?.slug?.includes('cladding') ||
+            product.category?.name?.toLowerCase().includes('cladding')
+          );
+          const hasCoverWidth = !!variantAttributeOptions['Cover Width'];
+          const hasLengthVariant = !!variantAttributeOptions['Length'];
+          if (!isCladding || !hasCoverWidth || hasLengthVariant) return null;
+          return (
+            <div>
+              <label className="mb-1.5 block text-sm font-semibold text-steel-700">
+                Length (metres) <span className="text-red-500">*</span>
+                <span className="ml-2 text-xs font-normal text-steel-400">Max 8m</span>
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min={0.1}
+                max={8}
+                value={length || ''}
+                onChange={(e) => {
+                  const raw = parseFloat(e.target.value);
+                  const val = !isNaN(raw) ? Math.min(raw, 8) : undefined;
+                  setLength(val);
+                }}
+                placeholder="Enter length (0.1 – 8m)"
+                className="w-full rounded-lg border border-steel-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+              />
+            </div>
+          );
+        })()}
 
         {/* Length input for roof sheets and per-metre products */}
         {(() => {
@@ -1413,6 +1501,12 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
         {/* Price display */}
         {(() => {
           const isRoofSheet = !!(product.category?.slug === 'roof-sheets' || product.category?.name?.toLowerCase().includes('roof sheet'));
+          const isCladdingProduct = !!(
+            product.category?.slug?.includes('cladding') ||
+            product.category?.name?.toLowerCase().includes('cladding')
+          );
+          const hasCoverWidthVariant = !!variantAttributeOptions['Cover Width'];
+          const isCladdingPerMetre = isCladdingProduct && hasCoverWidthVariant;
           const isPerMetre = !!(isRoofSheet || product.pricingModel === 'per_metre');
           const pricePerUnit = matchedVariant?.priceOverride || 0;
           const userLen = parseFloat(selectedAttributes['_userLength'] || '') || 0;
@@ -1426,9 +1520,22 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
             return (mm / 1000);
           })() : 0;
 
-          // Per-metre products: price × length; per-piece products: price is for the sheet
-          const linePrice = isPerMetre ? pricePerUnit * (matchedLenMetres || userLen || (length || 0)) : pricePerUnit;
+          // For cladding: price = unit × length × qty
+          const claddingLen = length || 0;
+          const linePrice = isCladdingPerMetre
+            ? pricePerUnit * claddingLen
+            : isPerMetre
+              ? pricePerUnit * (matchedLenMetres || userLen || (length || 0))
+              : pricePerUnit;
           const totalPrice = linePrice * quantity;
+
+          const colVal = selectedColour || selectedAttributes['Colour'] || '';
+          const displaySku = matchedVariant
+            ? (colVal && !hasColourInVariants ? `${matchedVariant.sku}-${getColourCode(colVal)}` : matchedVariant.sku)
+            : '';
+
+          // For cladding, all required: matchedVariant + length > 0
+          const claddingReady = isCladdingPerMetre ? (!!matchedVariant && claddingLen > 0) : true;
 
           return (
             <div className="rounded-xl bg-steel-50 p-5 border border-steel-100">
@@ -1436,65 +1543,64 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm text-green-600">
                     <Check className="h-4 w-4" />
-                    <span className="font-medium">SKU: {(() => {
-                      let sku = isPerMetre && userLen > 0 && matchedLenMetres > 0 && Math.abs(userLen - matchedLenMetres) > 0.01
-                        ? matchedVariant.sku.replace(String(matchedLenMetres), String(userLen))
-                        : matchedVariant.sku;
-                      const colVal = selectedColour || selectedAttributes['Colour'] || '';
-                      if (colVal && !hasColourInVariants) {
-                        sku += `-${getColourCode(colVal)}`;
-                      }
-                      return sku;
-                    })()}</span>
+                    <span className="font-medium">SKU: {displaySku}</span>
                   </div>
 
-
-                  {isPerMetre ? (
+                  {isCladdingPerMetre ? (
+                    <>
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-sm text-steel-600">Unit price:</span>
+                        <span className="text-sm font-medium text-steel-700">{formatCurrency(pricePerUnit)}/m</span>
+                      </div>
+                      {claddingLen > 0 && (
+                        <div className="flex items-baseline justify-between">
+                          <span className="text-sm text-steel-600">{formatCurrency(pricePerUnit)} × {claddingLen}m:</span>
+                          <span className="text-sm font-medium text-steel-700">{formatCurrency(linePrice)}</span>
+                        </div>
+                      )}
+                      {claddingLen > 0 && quantity > 1 && (
+                        <div className="flex items-baseline justify-between">
+                          <span className="text-sm text-steel-600">{formatCurrency(linePrice)} × {quantity} sheets:</span>
+                          <span className="text-sm font-medium text-steel-700">{formatCurrency(totalPrice)}</span>
+                        </div>
+                      )}
+                    </>
+                  ) : isPerMetre ? (
                     <>
                       <div className="flex items-baseline justify-between">
                         <span className="text-sm text-steel-600">Rate per metre:</span>
-                        <span className="text-sm font-medium text-steel-700">
-                          {formatCurrency(pricePerUnit)}/m
-                        </span>
+                        <span className="text-sm font-medium text-steel-700">{formatCurrency(pricePerUnit)}/m</span>
                       </div>
                       {(userLen || matchedLenMetres || length) ? (
                         <div className="flex items-baseline justify-between">
                           <span className="text-sm text-steel-600">{formatCurrency(pricePerUnit)} × {userLen || matchedLenMetres || length}m:</span>
-                          <span className="text-lg font-bold text-steel-900">
-                            {formatCurrency(linePrice)}
-                          </span>
+                          <span className="text-lg font-bold text-steel-900">{formatCurrency(linePrice)}</span>
                         </div>
                       ) : null}
                     </>
                   ) : (
                     <div className="flex items-baseline justify-between">
                       <span className="text-sm text-steel-600">
-                        {(() => {
-                          const isDambuster = product.category?.slug?.includes('dambuster') || product.category?.name?.toLowerCase().includes('dambuster');
-                          if (isDambuster) return 'Unit price:';
-                          return (userLen || matchedLenMetres) > 0 ? `Per ${userLen || matchedLenMetres}m sheet:` : 'Unit price:';
-                        })()}
+                        {(product.category?.slug?.includes('dambuster') || product.category?.name?.toLowerCase().includes('dambuster'))
+                          ? 'Unit price:'
+                          : (userLen || matchedLenMetres) > 0 ? `Per ${userLen || matchedLenMetres}m sheet:` : 'Unit price:'}
                       </span>
-                      <span className="text-lg font-bold text-steel-900">
-                        {formatCurrency(pricePerUnit)}
-                      </span>
+                      <span className="text-lg font-bold text-steel-900">{formatCurrency(pricePerUnit)}</span>
                     </div>
                   )}
 
-                  {quantity > 1 && (
+                  {!isCladdingPerMetre && quantity > 1 && (
                     <div className="flex items-baseline justify-between">
                       <span className="text-sm text-steel-600">Qty × {quantity}:</span>
-                      <span className="font-medium text-steel-700">
-                        {formatCurrency(totalPrice)}
-                      </span>
+                      <span className="font-medium text-steel-700">{formatCurrency(totalPrice)}</span>
                     </div>
                   )}
 
                   <div className="border-t border-steel-200 pt-3">
                     <div className="flex items-baseline justify-between">
                       <span className="text-base font-semibold text-steel-900">Total:</span>
-                      <span className="text-2xl font-bold text-steel-900">
-                        {formatCurrency(totalPrice)}
+                      <span className={cn('text-2xl font-bold', claddingReady ? 'text-steel-900' : 'text-steel-300')}>
+                        {claddingReady ? formatCurrency(totalPrice) : '—'}
                       </span>
                     </div>
                     <p className="text-xs text-steel-500 text-right mt-0.5">Excl. GST</p>
@@ -1503,7 +1609,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
               ) : (
                 <p className="text-sm text-steel-500 text-center py-2">
                   {selectedMaterial
-                    ? 'Select all dimensions to see the price'
+                    ? 'Select all options to see the price'
                     : 'Select material and dimensions to see pricing'}
                 </p>
               )}
@@ -1512,18 +1618,37 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
         })()}
 
         {/* Actions */}
-        <div className="flex gap-3">
-          {(
-            <>
-              <Button size="lg" className="flex-1" leftIcon={<ShoppingCart className="h-5 w-5" />} onClick={handleVariantAddToCart}>
+        {(() => {
+          const isCladdingProduct = !!(
+            product.category?.slug?.includes('cladding') ||
+            product.category?.name?.toLowerCase().includes('cladding')
+          );
+          const hasCoverWidthVariant = !!variantAttributeOptions['Cover Width'];
+          const isCladdingPerMetre = isCladdingProduct && hasCoverWidthVariant;
+          const claddingReady = isCladdingPerMetre ? (!!matchedVariant && !!length && length > 0) : !!matchedVariant;
+          return (
+            <div className="flex gap-3">
+              <Button
+                size="lg"
+                className="flex-1"
+                leftIcon={<ShoppingCart className="h-5 w-5" />}
+                onClick={handleVariantAddToCart}
+                disabled={!claddingReady}
+              >
                 Add to Cart
               </Button>
-              <Button variant="outline" size="lg" leftIcon={<Zap className="h-5 w-5" />} onClick={() => { handleVariantAddToCart(); if (matchedVariant) router.push('/cart'); }}>
+              <Button
+                variant="outline"
+                size="lg"
+                leftIcon={<Zap className="h-5 w-5" />}
+                onClick={() => { handleVariantAddToCart(); if (claddingReady) router.push('/cart'); }}
+                disabled={!claddingReady}
+              >
                 Buy Now
               </Button>
-            </>
-          )}
-        </div>
+            </div>
+          );
+        })()}
 
       </div>
       </>

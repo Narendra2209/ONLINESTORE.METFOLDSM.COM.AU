@@ -14,6 +14,7 @@ interface NavItem {
   name: string;
   href: string;
   children?: NavItem[];
+  grandchildren?: NavItem[];
 }
 
 // Fallback navigation (used while API loads)
@@ -58,10 +59,17 @@ export default function Header() {
 
         // API returns tree: [{name, slug, children: [{name, slug, children: []}]}]
         const nav: NavItem[] = tree.map((parent: any) => {
-          const children = (parent.children || []).map((child: any) => ({
-            name: child.name,
-            href: SPECIAL_ROUTES[child.slug] || `/categories/${child.slug}`,
-          }));
+          const children = (parent.children || []).map((child: any) => {
+            const grandchildren = (child.children || []).map((gc: any) => ({
+              name: gc.name,
+              href: SPECIAL_ROUTES[gc.slug] || `/categories/${gc.slug}`,
+            }));
+            return {
+              name: child.name,
+              href: SPECIAL_ROUTES[child.slug] || `/categories/${child.slug}`,
+              ...(grandchildren.length > 0 ? { grandchildren } : {}),
+            };
+          });
 
           return {
             name: parent.name,
@@ -288,14 +296,36 @@ export default function Header() {
                 {item.children && activeDropdown === item.name && (
                   <div className="absolute left-0 top-full z-50 min-w-[240px] rounded-b-xl bg-white py-2 shadow-xl border border-t-0 border-steel-100 animate-fade-in-up">
                     {item.children.map((child) => (
-                      <Link
-                        key={child.name}
-                        href={child.href}
-                        className="flex items-center gap-2 px-5 py-3 text-sm font-medium text-steel-600 hover:bg-brand-50 hover:text-brand-600 transition-colors"
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full bg-steel-300" />
-                        {child.name}
-                      </Link>
+                      <div key={child.name} className="relative group/child">
+                        <Link
+                          href={child.href}
+                          className="flex items-center justify-between gap-2 px-5 py-3 text-sm font-medium text-steel-600 hover:bg-brand-50 hover:text-brand-600 transition-colors"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="h-1.5 w-1.5 rounded-full bg-steel-300" />
+                            {child.name}
+                          </span>
+                          {child.grandchildren && child.grandchildren.length > 0 && (
+                            <ChevronDown className="h-3 w-3 -rotate-90 text-steel-400" />
+                          )}
+                        </Link>
+                        {/* Flyout grandchildren panel */}
+                        {child.grandchildren && child.grandchildren.length > 0 && (
+                          <div className="absolute left-full top-0 z-50 min-w-[180px] rounded-xl bg-white py-2 shadow-xl border border-steel-100
+                            opacity-0 pointer-events-none group-hover/child:opacity-100 group-hover/child:pointer-events-auto transition-opacity duration-150">
+                            {child.grandchildren.map((gc) => (
+                              <Link
+                                key={gc.name}
+                                href={gc.href}
+                                className="flex items-center gap-2 px-4 py-2.5 text-sm text-steel-600 hover:bg-brand-50 hover:text-brand-600 transition-colors"
+                              >
+                                <span className="h-1 w-1 rounded-full bg-steel-300" />
+                                {gc.name}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}
