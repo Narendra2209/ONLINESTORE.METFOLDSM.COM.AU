@@ -10,6 +10,7 @@ import reportRoutes from './report.routes';
 import adminUserRoutes, { roleRoutes } from './admin-user.routes';
 import claddingRoutes, { adminCladdingRoutes } from './cladding.routes';
 import dambusterRoutes, { adminDambusterRoutes } from './dambuster.routes';
+import contactRoutes from './contact.routes';
 
 const router = Router();
 
@@ -53,6 +54,7 @@ router.use('/cart', cartRoutes);
 router.use('/orders', orderRoutes);
 router.use('/cladding', claddingRoutes);
 router.use('/dambuster', dambusterRoutes);
+router.use('/contact', contactRoutes);
 
 // Admin routes
 router.use('/admin/categories', adminCategoryRoutes);

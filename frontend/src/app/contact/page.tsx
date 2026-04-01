@@ -4,30 +4,35 @@ import React, { useState } from 'react';
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import { MapPin, Phone, Mail, Clock, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '@/lib/axios';
 
 const branches = [
-  { name: 'METFOLD - SUNBURY', address: '51 McDougall Road, Sunbury, Victoria 3429', phone: '(03) 9732 0148', email: 'sunbury@metfold.com.au' },
-  { name: 'METFOLD - MELTON', address: '16 Collins Road, Melton, Victoria 3339', phone: '(03) 9747 9044', email: 'melton@metfold.com.au' },
-  { name: 'METFOLD - PAKENHAM', address: '47 Sette CCT, Pakenham, Victoria 3810', phone: '(03) 5910 6099', email: 'pakenham@metfold.com.au' },
-  { name: 'METFOLD - MOAMA', address: '11 Bowlan St, Moama, NSW 2731', phone: '(03) 5482 1468', email: 'moama@metfold.com.au' },
+  { name: 'METFOLD - SUNBURY', address: '51 McDougall Road, Sunbury, Victoria 3429', phone: '(03) 9732 0148', email: 'order@metfoldsm.com.au' },
+  { name: 'METFOLD - MELTON', address: '16 Collins Road, Melton, Victoria 3339', phone: '(03) 9747 9044', email: 'melton@metfoldsm.com.au' },
+  { name: 'METFOLD - PAKENHAM', address: '47 Sette CCT, Pakenham, Victoria 3810', phone: '(03) 5910 6099', email: 'pakenham@metfoldsm.com.au' },
+  { name: 'METFOLD - MOAMA', address: '11 Bowlan St, Moama, NSW 2731', phone: '(03) 5482 1468', email: 'moama@metfoldsm.com.au' },
 ];
 
 export default function ContactPage() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', branch: '', message: '' });
   const [sending, setSending] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.message) {
+    if (!form.name || !form.email || !form.phone || !form.branch || !form.message) {
       toast.error('Please fill in all required fields');
       return;
     }
     setSending(true);
-    setTimeout(() => {
+    try {
+      await api.post('/contact', form);
       toast.success('Message sent! We will get back to you shortly.');
       setForm({ name: '', email: '', phone: '', branch: '', message: '' });
+    } catch {
+      toast.error('Failed to send message. Please try again.');
+    } finally {
       setSending(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -72,7 +77,7 @@ export default function ContactPage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-steel-700 mb-1.5">Phone</label>
+                  <label className="block text-sm font-medium text-steel-700 mb-1.5">Phone *</label>
                   <input
                     type="tel"
                     value={form.phone}
@@ -82,7 +87,7 @@ export default function ContactPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-steel-700 mb-1.5">Preferred Branch</label>
+                  <label className="block text-sm font-medium text-steel-700 mb-1.5">Preferred Branch *</label>
                   <select
                     value={form.branch}
                     onChange={(e) => setForm({ ...form, branch: e.target.value })}
@@ -128,12 +133,12 @@ export default function ContactPage() {
                   <span>Monday - Friday</span>
                   <span className="font-medium text-steel-900">7:00 AM - 5:00 PM</span>
                 </div>
-                <div className="flex justify-between">
+                {/* <div className="flex justify-between">
                   <span>Saturday</span>
                   <span className="font-medium text-steel-900">8:00 AM - 12:00 PM</span>
-                </div>
+                </div> */}
                 <div className="flex justify-between">
-                  <span>Sunday</span>
+                  <span>saturday-Sunday</span>
                   <span className="font-medium text-steel-500">Closed</span>
                 </div>
               </div>

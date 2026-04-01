@@ -272,7 +272,7 @@
 .ribbon-track {
   display: flex;
   width: max-content;
-  animation: ribbon-scroll 40s linear infinite;
+  animation: ribbon-scroll 80s linear infinite;
 }
 .ribbon-track:hover {
   animation-play-state: paused;
@@ -308,7 +308,7 @@
   z-index: 20;
 }
 .ribbon-track .ribbon-card {
-  animation: ribbon-card-pop 40s linear infinite;
+  animation: ribbon-card-pop 80s linear infinite;
 }
 
 /* Gradient border animation */
