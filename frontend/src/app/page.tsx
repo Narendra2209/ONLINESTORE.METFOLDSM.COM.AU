@@ -348,36 +348,39 @@ function CategoriesFan({ products }: { products: Product[] }) {
               <img src="/images/logo.png" alt="Metfold" className="w-[85%] h-auto object-contain" />
             </div>
 
-            {/* Hover product image — bottom-left, overlapping fan like JSW reference */}
+            {/* Hover product image — dynamically positioned near the hovered segment */}
             <AnimatePresence>
-              {hoveredCat && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  transition={{ duration: 0.3, ease }}
-                  className="absolute left-[-5%] bottom-[-15%] z-20 hidden lg:block"
-                >
-                  <Link href={`/categories/${hoveredCat.slug}`} className="relative block rounded-xl overflow-hidden shadow-2xl bg-white" style={{ width: '300px', height: '200px' }}>
-                    {hoveredImg ? (
-                      <img src={hoveredImg} alt={hoveredCat.name} className="w-full h-full object-contain p-3 bg-steel-50" />
-                    ) : (
-                      <div className="w-full h-full bg-steel-50 flex items-center justify-center">
-                        <Package className="h-16 w-16 text-steel-200" />
+              {hoveredCat && hoveredIdx !== null && (() => {
+                const total = categories.length;
+                const midAngle = Math.PI + ((hoveredIdx + 0.5) * Math.PI) / total;
+                const popR = 0.95;
+                const popLeft = 50 + popR * Math.cos(midAngle) * 48;
+                const popTop = 95 + popR * Math.sin(midAngle) * 87;
+                return (
+                  <motion.div
+                    key={`pop-${hoveredIdx}`}
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ duration: 0.2, ease }}
+                    className="absolute z-20 hidden lg:block -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                    style={{ left: `${popLeft}%`, top: `${popTop}%` }}
+                  >
+                    <div className="relative rounded-xl overflow-hidden shadow-2xl bg-white pointer-events-auto" style={{ width: '200px', height: '140px' }}>
+                      {hoveredImg ? (
+                        <img src={hoveredImg} alt={hoveredCat.name} className="w-full h-full object-contain p-2 bg-steel-50" />
+                      ) : (
+                        <div className="w-full h-full bg-steel-50 flex items-center justify-center">
+                          <Package className="h-10 w-10 text-steel-200" />
+                        </div>
+                      )}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-steel-900/90 to-transparent px-3 py-2">
+                        <div className="text-[11px] font-bold text-white truncate">{hoveredProduct?.name || hoveredCat.name}</div>
                       </div>
-                    )}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-steel-900/90 to-transparent px-4 py-3">
-                      <div className="text-sm font-bold text-white">{hoveredProduct?.name || hoveredCat.name}</div>
-                      <div className="text-[10px] text-white/70">{hoveredCat.desc}</div>
                     </div>
-                    <div className="absolute top-2 left-2">
-                      <div className="flex items-center gap-1.5 bg-brand-600 text-white text-[9px] font-bold px-2 py-1 rounded-md">
-                        <ArrowUpRight className="h-2.5 w-2.5" /> View
-                      </div>
-                    </div>
-                  </Link>
-                </motion.div>
-              )}
+                  </motion.div>
+                );
+              })()}
             </AnimatePresence>
           </div>
         </Reveal>

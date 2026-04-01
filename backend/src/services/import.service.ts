@@ -128,6 +128,12 @@ const COLUMN_ALIASES: Record<string, string> = {
   'size': 'size',
   'screw_size': 'size',
   'screw size': 'size',
+  'base_unit': 'base_unit',
+  'base unit': 'base_unit',
+  'baseunit': 'base_unit',
+  'unit': 'base_unit',
+  'uom': 'base_unit',
+  'type': 'type',
 };
 
 interface ImportRow {
@@ -156,6 +162,7 @@ interface ImportRow {
   cover_width?: string;
   pack_size?: string;
   size?: string;
+  base_unit?: string;
   base_price?: number;
   pricing_type?: string;
   tier?: string;
@@ -174,7 +181,7 @@ const DIMENSION_FIELDS = [
   'sump_length', 'sump_width', 'sump_depth',
   'length', 'width', 'thickness', 'girth', 'folds',
   'gauge', 'rib_size', 'cover_width',
-  'material', 'finish_category', 'colour', 'sump_type', 'pack_size', 'size',
+  'material', 'finish_category', 'colour', 'sump_type', 'pack_size', 'size', 'type',
 ];
 
 // Readable names for dimension/attribute fields
@@ -913,12 +920,15 @@ export const importService = {
       // Set category from sheet name if not specified
       if (!row.category) row.category = sheetName;
 
-      // Handle "type" column ambiguity
+      // Handle "type" column — keep as `type` attribute (e.g. FIXED/SLIDING for clips, LEFT/RIGHT for dambusters)
+      // Only move to sump_type if it looks like a sump type value
       if (row.type && !row.sump_type) {
         const typeVal = String(row.type).toLowerCase();
-        if (!['simple', 'configurable'].includes(typeVal)) {
-          row.sump_type = String(row.type);
+        if (['simple', 'configurable'].includes(typeVal)) {
+          // It's a product type indicator, not an attribute — ignore
+          row.type = undefined;
         }
+        // Otherwise keep row.type as-is — it will become a configurable attribute
       }
 
       // Parse SKU for product name and dimensions
@@ -1636,6 +1646,12 @@ export const importService = {
       'FASCIA_GUTTER': 'fascia-and-gutter-products',
       'GUTTER': 'fascia-and-gutter-products',
       'FASCIA & GUTTER': 'fascia-and-gutter-products',
+      'ROOFING_ACCESSORIES': 'roofing-accessories',
+      'ROOFING ACCESSORIES': 'roofing-accessories',
+      'ROOFING ACCESSROIES': 'roofing-accessories',
+      'ROOFING_ACCESSROIES': 'roofing-accessories',
+      'CLADDING_ACCESSORIES': 'cladding-accessories',
+      'CLADDING ACCESSORIES': 'cladding-accessories',
     };
     const directSlug = SHEET_TO_CATEGORY[categoryName.toUpperCase().trim()];
     if (directSlug) {
