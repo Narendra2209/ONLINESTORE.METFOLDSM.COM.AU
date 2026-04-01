@@ -655,16 +655,16 @@ export default function CartPage() {
                           >
                             {allAddresses.map((addr: any) => (
                               <option key={addr._id} value={addr._id}>
-                                {addr.fullName || addr.label}{addr.isDefault ? ' (Default)' : ''} — {addr.street}, {addr.city}
+                                {addr.fullName || addr.label}{addr.isDefault ? ' (Default)' : ''} — {addr.city}, {addr.state}
                               </option>
                             ))}
                           </select>
                         </div>
                         {savedAddress && (
-                          <div className="rounded-lg bg-steel-50 border border-steel-100 p-3 text-xs text-steel-600">
-                            <p className="font-medium text-steel-800">{savedAddress.fullName}</p>
+                          <div className="rounded-lg bg-steel-50 border border-steel-100 p-3 text-xs text-steel-600 space-y-0.5">
+                            <p className="font-semibold text-steel-800">{savedAddress.fullName}</p>
                             {savedAddress.phone && <p>{savedAddress.phone}</p>}
-                            <p className="mt-1">{savedAddress.street}</p>
+                            <p>{savedAddress.street}</p>
                             <p>{savedAddress.city}, {savedAddress.state} {savedAddress.postcode}</p>
                           </div>
                         )}

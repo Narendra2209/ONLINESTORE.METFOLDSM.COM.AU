@@ -10,7 +10,7 @@ import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import toast from 'react-hot-toast';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
@@ -26,6 +26,7 @@ function LoginContent() {
   const router = useRouter();
   const { login, googleAuth, isLoading } = useAuthStore();
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -103,14 +104,23 @@ function LoginContent() {
           {...register('email')}
         />
 
-        <Input
-          label="Password"
-          type="password"
-          placeholder="Enter your password"
-          leftIcon={<Lock className="h-4 w-4" />}
-          error={errors.password?.message}
-          {...register('password')}
-        />
+        <div className="relative">
+          <Input
+            label="Password"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="Enter your password"
+            leftIcon={<Lock className="h-4 w-4" />}
+            error={errors.password?.message}
+            {...register('password')}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-[34px] text-steel-400 hover:text-steel-600 transition-colors"
+          >
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
 
         <div className="flex items-center justify-between text-sm">
           <label className="flex items-center gap-2 text-steel-600 cursor-pointer group">

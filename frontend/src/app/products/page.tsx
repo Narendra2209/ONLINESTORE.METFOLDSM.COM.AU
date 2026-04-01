@@ -48,6 +48,7 @@ function ProductListingContent() {
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [categoryInfo, setCategoryInfo] = useState<{ name: string; ancestors: { name: string; slug: string }[] } | null>(null);
   const [filters, setFilters] = useState<ProductFilters>({
     search: searchParams.get('search') || '',
     category: searchParams.get('category') || '',
@@ -55,6 +56,31 @@ function ProductListingContent() {
     page: 1,
     limit: 12,
   });
+
+  // Sync URL searchParams → filters when navigating via links
+  useEffect(() => {
+    const urlCategory = searchParams.get('category') || '';
+    const urlSearch = searchParams.get('search') || '';
+    setFilters(prev => ({
+      ...prev,
+      category: urlCategory,
+      search: urlSearch,
+      page: 1,
+    }));
+  }, [searchParams]);
+
+  const categorySlug = filters.category;
+
+  // Fetch category info for breadcrumb when a category is selected
+  useEffect(() => {
+    if (!categorySlug) {
+      setCategoryInfo(null);
+      return;
+    }
+    productApi.getCategoryBySlug(categorySlug)
+      .then((cat: any) => setCategoryInfo({ name: cat.name, ancestors: cat.ancestors || [] }))
+      .catch(() => setCategoryInfo(null));
+  }, [categorySlug]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -75,13 +101,27 @@ function ProductListingContent() {
     fetchProducts();
   }, [filters]);
 
+  // Build breadcrumb items
+  const breadcrumbItems = categoryInfo
+    ? [
+        { label: 'All Products', href: '/products' },
+        ...categoryInfo.ancestors.map((a) => ({
+          label: a.name,
+          href: `/products?category=${a.slug}`,
+        })),
+        { label: categoryInfo.name },
+      ]
+    : [{ label: 'All Products' }];
+
+  const pageTitle = categoryInfo ? categoryInfo.name : 'All Products';
+
   return (
     <div className="bg-steel-50 min-h-screen animate-fade-in-up">
       {/* Page Header */}
       <div className="bg-white border-b border-steel-100">
         <div className="container-main py-5 sm:py-8">
-          <Breadcrumb items={[{ label: 'All Products' }]} />
-          <h1 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-bold text-steel-900 tracking-tight">All Products</h1>
+          <Breadcrumb items={breadcrumbItems} />
+          <h1 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-bold text-steel-900 tracking-tight">{pageTitle}</h1>
           <p className="mt-1 text-sm sm:text-base text-steel-500">{total} products available</p>
         </div>
       </div>

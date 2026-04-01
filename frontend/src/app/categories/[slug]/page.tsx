@@ -97,7 +97,15 @@ export default function CategoryPage() {
       {/* Category Header */}
       <div className="bg-white border-b border-steel-100">
         <div className="container-main py-5 sm:py-8">
-          <Breadcrumb items={[{ label: category.name }]} />
+          <Breadcrumb
+            items={[
+              ...(category.ancestors || []).map((a) => ({
+                label: a.name,
+                href: `/categories/${a.slug}`,
+              })),
+              { label: category.name },
+            ]}
+          />
           <h1 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-bold text-steel-900 tracking-tight">{category.name}</h1>
           {category.description && (
             <p className="mt-1.5 sm:mt-2 text-sm sm:text-base text-steel-500 max-w-2xl leading-relaxed">{category.description}</p>

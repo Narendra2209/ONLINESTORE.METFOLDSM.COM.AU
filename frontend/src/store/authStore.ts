@@ -23,6 +23,9 @@ interface AuthState {
   verifyRegistrationOtp: (email: string, otp: string) => Promise<void>;
   resendOtp: (email: string) => Promise<void>;
   googleAuth: (idToken: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
+  verifyResetOtp: (email: string, otp: string) => Promise<string>;
+  resetPassword: (token: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
   setUser: (user: User | null) => void;
@@ -80,6 +83,34 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   resendOtp: async (email) => {
     await api.post('/auth/resend-otp', { email });
+  },
+
+  forgotPassword: async (email) => {
+    set({ isLoading: true });
+    try {
+      await api.post('/auth/forgot-password', { email });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  verifyResetOtp: async (email, otp) => {
+    set({ isLoading: true });
+    try {
+      const { data } = await api.post('/auth/verify-reset-otp', { email, otp });
+      return data.data.resetToken as string;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  resetPassword: async (token, password) => {
+    set({ isLoading: true });
+    try {
+      await api.post('/auth/reset-password', { token, password });
+    } finally {
+      set({ isLoading: false });
+    }
   },
 
   googleAuth: async (idToken) => {

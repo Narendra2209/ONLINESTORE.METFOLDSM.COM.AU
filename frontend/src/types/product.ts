@@ -9,6 +9,7 @@ export interface Category {
   sortOrder: number;
   isActive: boolean;
   children?: Category[];
+  ancestors?: { name: string; slug: string }[];
   productCount?: number;
   seo?: {
     metaTitle?: string;

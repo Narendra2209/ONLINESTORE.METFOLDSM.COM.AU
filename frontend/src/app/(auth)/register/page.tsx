@@ -12,7 +12,7 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import toast from 'react-hot-toast';
 import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
-import { Mail, ArrowLeft, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Mail, ArrowLeft, ShieldCheck, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 
@@ -100,6 +100,8 @@ function RegisterContent() {
   const router = useRouter();
   const { initiateRegistration, verifyRegistrationOtp, resendOtp, googleAuth, isLoading } = useAuthStore();
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [step, setStep] = useState<'form' | 'otp'>('form');
   const [registrationEmail, setRegistrationEmail] = useState('');
   const [countdown, setCountdown] = useState(0);
@@ -296,21 +298,33 @@ function RegisterContent() {
           {...register('phone')}
         />
 
-        <Input
-          label="Password"
-          type="password"
-          placeholder="Minimum 8 characters"
-          error={errors.password?.message}
-          {...register('password')}
-        />
+        <div className="relative">
+          <Input
+            label="Password"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="Minimum 8 characters"
+            error={errors.password?.message}
+            {...register('password')}
+          />
+          <button type="button" onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-[34px] text-steel-400 hover:text-steel-600 transition-colors">
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
 
-        <Input
-          label="Confirm Password"
-          type="password"
-          placeholder="Re-enter your password"
-          error={errors.confirmPassword?.message}
-          {...register('confirmPassword')}
-        />
+        <div className="relative">
+          <Input
+            label="Confirm Password"
+            type={showConfirmPassword ? 'text' : 'password'}
+            placeholder="Re-enter your password"
+            error={errors.confirmPassword?.message}
+            {...register('confirmPassword')}
+          />
+          <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            className="absolute right-3 top-[34px] text-steel-400 hover:text-steel-600 transition-colors">
+            {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
 
         <Button type="submit" className="w-full btn-shine" size="lg" isLoading={isLoading}>
           Create Account

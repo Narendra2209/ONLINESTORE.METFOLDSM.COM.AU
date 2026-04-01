@@ -8,6 +8,7 @@ import {
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  verifyResetOtpSchema,
   changePasswordSchema,
   initiateRegistrationSchema,
   verifyOtpSchema,
@@ -69,6 +70,13 @@ router.post(
   authLimiter,
   validate({ body: forgotPasswordSchema }),
   authController.forgotPassword
+);
+
+router.post(
+  '/verify-reset-otp',
+  authLimiter,
+  validate({ body: verifyResetOtpSchema }),
+  authController.verifyResetOtp
 );
 
 router.post(

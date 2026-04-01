@@ -27,7 +27,16 @@ const categoryTree: SeedCategory[] = [
     children: [
       { name: 'Fascia & Gutter Products' },
       { name: 'Fascia Accessories' },
-      { name: 'Gutter Accessories' },
+      {
+        name: 'Gutter Accessories',
+        children: [
+          { name: 'Quad' },
+          { name: 'Flatback' },
+          { name: 'Squarline' },
+          { name: 'OG' },
+          { name: 'Half Flatback' },
+        ],
+      },
     ],
   },
   {
@@ -66,16 +75,9 @@ export const seedCategories = async () => {
     const cat = categoryTree[i];
     const slug = generateSlug(cat.name);
 
-    const parent = await Category.findOneAndUpdate(
+    const root = await Category.findOneAndUpdate(
       { slug },
-      {
-        name: cat.name,
-        slug,
-        level: 0,
-        sortOrder: i,
-        isActive: true,
-        parent: null,
-      },
+      { name: cat.name, slug, level: 0, sortOrder: i, isActive: true, parent: null },
       { upsert: true, new: true }
     );
     count++;
@@ -85,19 +87,26 @@ export const seedCategories = async () => {
         const child = cat.children[j];
         const childSlug = generateSlug(child.name);
 
-        await Category.findOneAndUpdate(
+        const childDoc = await Category.findOneAndUpdate(
           { slug: childSlug },
-          {
-            name: child.name,
-            slug: childSlug,
-            level: 1,
-            sortOrder: j,
-            isActive: true,
-            parent: parent._id,
-          },
+          { name: child.name, slug: childSlug, level: 1, sortOrder: j, isActive: true, parent: root._id },
           { upsert: true, new: true }
         );
         count++;
+
+        if (child.children) {
+          for (let k = 0; k < child.children.length; k++) {
+            const grandchild = child.children[k];
+            const grandSlug = generateSlug(grandchild.name);
+
+            await Category.findOneAndUpdate(
+              { slug: grandSlug },
+              { name: grandchild.name, slug: grandSlug, level: 2, sortOrder: k, isActive: true, parent: childDoc._id },
+              { upsert: true, new: true }
+            );
+            count++;
+          }
+        }
       }
     }
   }

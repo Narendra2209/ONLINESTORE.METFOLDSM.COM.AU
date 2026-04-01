@@ -80,6 +80,15 @@ export const forgotPassword = catchAsync(async (req: Request, res: Response) => 
   });
 });
 
+export const verifyResetOtp = catchAsync(async (req: Request, res: Response) => {
+  const result = await authService.verifyResetOtp(req.body.email, req.body.otp);
+  ApiResponse.success({
+    res,
+    message: 'OTP verified',
+    data: { resetToken: result.resetToken },
+  });
+});
+
 export const resetPassword = catchAsync(async (req: Request, res: Response) => {
   await authService.resetPassword(req.body.token, req.body.password);
   ApiResponse.success({ res, message: 'Password reset successful' });

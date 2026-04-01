@@ -39,6 +39,16 @@ export const categoryService = {
     const category = await Category.findOne({ slug, isActive: true });
     if (!category) throw ApiError.notFound('Category not found');
 
+    // Build ancestor breadcrumb chain (walk up parent links)
+    const ancestors: { name: string; slug: string }[] = [];
+    let current = category;
+    while (current.parent) {
+      const parent = await Category.findById(current.parent).lean();
+      if (!parent) break;
+      ancestors.unshift({ name: parent.name, slug: parent.slug });
+      current = parent as any;
+    }
+
     // Get subcategories
     const children = await Category.find({ parent: category._id, isActive: true })
       .sort({ sortOrder: 1 });
@@ -52,6 +62,7 @@ export const categoryService = {
 
     return {
       ...category.toObject(),
+      ancestors,
       children,
       productCount,
     };

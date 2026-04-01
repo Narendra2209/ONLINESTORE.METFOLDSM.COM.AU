@@ -90,8 +90,12 @@ export const authService = {
       .select('+password')
       .populate('role', 'name displayName permissions');
 
-    if (!user || !(await user.comparePassword(password))) {
-      throw ApiError.unauthorized('Invalid email or password');
+    if (!user) {
+      throw ApiError.unauthorized('No account found with this email address');
+    }
+
+    if (!(await user.comparePassword(password))) {
+      throw ApiError.unauthorized('Password is incorrect');
     }
 
     if (!user.isActive) {
@@ -167,23 +171,47 @@ export const authService = {
     const user = await User.findOne({ email });
     if (!user) return; // Don't reveal if email exists
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const otp = generateOtp();
+    const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
 
     await User.findByIdAndUpdate(user._id, {
-      passwordResetToken: hashedToken,
-      passwordResetExpires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+      passwordResetToken: `otp:${hashedOtp}`,
+      passwordResetExpires: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
     });
 
-    // TODO: Send email with reset link containing resetToken
-    return resetToken;
+    await emailService.sendPasswordResetOtpEmail(email, otp, user.firstName);
+  },
+
+  async verifyResetOtp(email: string, otp: string) {
+    const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+
+    const user = await User.findOne({
+      email,
+      passwordResetToken: `otp:${hashedOtp}`,
+      passwordResetExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      throw ApiError.badRequest('Invalid or expired OTP');
+    }
+
+    // OTP verified — generate a secure reset token for the password step
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    await User.findByIdAndUpdate(user._id, {
+      passwordResetToken: `token:${hashedResetToken}`,
+      passwordResetExpires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes to set new password
+    });
+
+    return { resetToken };
   },
 
   async resetPassword(token: string, newPassword: string) {
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
     const user = await User.findOne({
-      passwordResetToken: hashedToken,
+      passwordResetToken: `token:${hashedToken}`,
       passwordResetExpires: { $gt: new Date() },
     });
 

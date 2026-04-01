@@ -128,6 +128,31 @@ export const emailService = {
     await this.sendEmail(email, `Welcome to ${storeName}!`, html);
   },
 
+  async sendPasswordResetOtpEmail(email: string, otp: string, firstName: string) {
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+        <div style="background:#1a1a2e;color:white;padding:20px;text-align:center;">
+          <h1 style="margin:0;font-size:24px;">METFOLD</h1>
+        </div>
+        <div style="padding:30px;text-align:center;">
+          <h2 style="color:#333;">Reset Your Password</h2>
+          <p>Hi ${firstName},</p>
+          <p>Use the following code to reset your password:</p>
+          <div style="margin:30px 0;">
+            <span style="font-size:36px;font-weight:bold;letter-spacing:8px;background:#f5f5f5;padding:16px 32px;border-radius:12px;color:#1a1a2e;">${otp}</span>
+          </div>
+          <p style="color:#666;font-size:14px;">This code expires in <strong>10 minutes</strong>.</p>
+          <p style="color:#666;font-size:14px;">If you didn't request this, please ignore this email.</p>
+        </div>
+        <div style="background:#f5f5f5;padding:15px;text-align:center;font-size:12px;color:#888;">
+          <p>${storeName} | sales@metfold.com.au</p>
+        </div>
+      </div>
+    `;
+
+    await this.sendEmail(email, `${otp} - Your Metfold Password Reset Code`, html);
+  },
+
   async sendPasswordResetEmail(email: string, resetToken: string) {
     const resetUrl = `${env.CORS_ORIGIN}/reset-password?token=${resetToken}`;
 
