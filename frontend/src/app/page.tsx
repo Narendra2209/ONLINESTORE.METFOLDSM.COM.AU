@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import {
-  motion, useInView, useScroll, useTransform, AnimatePresence,
+  motion, useInView, AnimatePresence,
 } from 'framer-motion';
 import {
   ArrowRight, Shield, Truck, Headphones, Award,
@@ -390,14 +390,113 @@ function CategoriesFan({ products }: { products: Product[] }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   ORBITING CARD — figure-8 (lemniscate) path
+   ═══════════════════════════════════════════════════════════════════════ */
+
+function OrbitingCard({ index, totalCards, products }: { index: number; totalCards: number; products: Product[] }) {
+  const duration = 20;
+  const offset = index / totalCards;
+  const steps = 120;
+  const xKeys: number[] = [];
+  const yKeys: number[] = [];
+  const scaleKeys: number[] = [];
+  const zKeys: number[] = [];
+  const radiusX = 220;
+  const radiusY = 160;
+  const cx = 240 - 80;
+  const cy = 240 - 60;
+
+  // Circular orbit with 3D depth: back (top, small, behind) → front (bottom, large, in front)
+  for (let i = 0; i <= steps; i++) {
+    const t = ((i / steps) + offset) * 2 * Math.PI;
+    const cosT = Math.cos(t);
+    const sinT = Math.sin(t);
+    xKeys.push(cx + radiusX * cosT);
+    yKeys.push(cy + radiusY * sinT * 0.5); // flattened Y for perspective
+    // Scale: small at back (top), large at front (bottom)
+    const depth = (sinT + 1) / 2; // 0 = back, 1 = front
+    scaleKeys.push(0.6 + depth * 0.5); // 0.6 → 1.1
+    zKeys.push(Math.round(depth * 40)); // z-index: 0–40
+  }
+
+  const cardContent = (() => {
+    if (index === 0) {
+      return (
+        <div className="w-[160px] rounded-xl bg-white/95 backdrop-blur shadow-xl shadow-black/15 overflow-hidden">
+          <div className="h-[80px] bg-white flex items-center justify-center p-2">
+            {products[0]?.images?.[0]?.url ? (
+              <img src={products[0].images[0].url} alt={products[0]?.name} className="max-h-full max-w-full object-contain" />
+            ) : <Package className="h-8 w-8 text-steel-200" />}
+          </div>
+          <div className="px-3 py-2">
+            <div className="text-[9px] font-bold text-brand-500 uppercase">{products[0]?.category?.name}</div>
+            <div className="text-[11px] font-bold text-steel-900 line-clamp-1">{products[0]?.name}</div>
+          </div>
+        </div>
+      );
+    }
+    if (index === 1) {
+      return (
+        <div className="bg-white/95 backdrop-blur rounded-xl shadow-lg shadow-black/10 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-green-50 flex items-center justify-center">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-steel-900">Quality Assured</div>
+              <div className="text-[9px] text-steel-400">AS Standards</div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    if (index === 2) {
+      return (
+        <div className="w-[160px] rounded-xl bg-white/95 backdrop-blur shadow-xl shadow-black/15 overflow-hidden">
+          <div className="h-[80px] bg-white flex items-center justify-center p-2">
+            {products[1]?.images?.[0]?.url ? (
+              <img src={products[1].images[0].url} alt={products[1]?.name} className="max-h-full max-w-full object-contain" />
+            ) : <Package className="h-8 w-8 text-steel-200" />}
+          </div>
+          <div className="px-3 py-2">
+            <div className="text-[11px] font-bold text-steel-900 line-clamp-1">{products[1]?.name}</div>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="bg-white/95 backdrop-blur rounded-xl shadow-lg shadow-black/10 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-brand-50 flex items-center justify-center">
+            <Truck className="h-4 w-4 text-brand-500" />
+          </div>
+          <div>
+            <div className="text-[10px] font-bold text-steel-900">Fast Delivery</div>
+            <div className="text-[9px] text-steel-400">Australia-wide</div>
+          </div>
+        </div>
+      </div>
+    );
+  })();
+
+  return (
+    <motion.div
+      animate={{ x: xKeys, y: yKeys, scale: scaleKeys, zIndex: zKeys }}
+      transition={{ duration, repeat: Infinity, ease: 'linear' }}
+      className="absolute"
+      style={{ zIndex: 10 }}
+    >
+      {cardContent}
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    MAIN PAGE
    ═══════════════════════════════════════════════════════════════════════ */
 
 export default function HomePage() {
   const heroRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.75], [1, 0]);
-
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
@@ -411,7 +510,7 @@ export default function HomePage() {
       {/* ═══════════════  HERO  ════════════════════════════════════════════ */}
       <section ref={heroRef}
         aria-label="Metfold Sheet Metal — Premium roofing and cladding supplies"
-        className="relative overflow-hidden bg-white">
+        className="relative overflow-hidden bg-steel-950">
 
         {/* JSON-LD */}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
@@ -421,152 +520,109 @@ export default function HomePage() {
           address: { '@type': 'PostalAddress', addressCountry: 'AU' },
         }) }} />
 
-        <div className="container-main relative">
+        {/* Background Video */}
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover z-0"
+        >
+          <source src="/videos/hero.mp4" type="video/mp4" />
+        </video>
+
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-black/55 z-[1]" />
+
+        <div className="container-main relative z-[2]">
           <div className="flex flex-col lg:flex-row items-center min-h-[85vh] py-16 lg:py-0 gap-10 lg:gap-16">
             {/* Left — Text content */}
-            <motion.div style={{ opacity: heroOpacity }} className="flex-1 max-w-xl relative z-10">
-              <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, ease, delay: 0.1 }}>
-                <div className="inline-flex items-center gap-2.5 rounded-full bg-brand-50 border border-brand-100 px-4 py-1.5 text-[12px] font-semibold text-brand-600 mb-6">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-500 opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-500" />
-                  </span>
-                  Online Ordering Now Live
-                </div>
-              </motion.div>
+            <div className="flex-1 max-w-xl relative z-10">
+              <div className="inline-flex items-center gap-2.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 px-4 py-1.5 text-[12px] font-semibold text-white/90 mb-6">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-400" />
+                </span>
+                Online Ordering Now Live
+              </div>
 
-              <motion.h1 initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.9, ease, delay: 0.2 }}
-                className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-[-0.03em] leading-[1.05] text-steel-900">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-[-0.03em] leading-[1.05] text-white">
                 Australia&apos;s Trusted{' '}
                 <span className="relative inline-block">
-                  <span className="bg-gradient-to-r from-brand-600 to-brand-500 bg-clip-text text-transparent">Roofing</span>
-                  <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }}
-                    transition={{ duration: 0.8, delay: 1.2, ease }}
-                    className="absolute -bottom-1 left-0 right-0 h-[3px] bg-gradient-to-r from-brand-500 to-brand-400 origin-left rounded-full" />
+                  <span className="text-brand-400">Roofing</span>
+                  <span className="absolute -bottom-1 left-0 right-0 h-[3px] bg-brand-400 rounded-full" />
                 </span>{' '}
                 &amp; Sheet Metal Supplier
-              </motion.h1>
+              </h1>
 
-              <motion.p initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, ease, delay: 0.4 }}
-                className="mt-6 text-base sm:text-lg text-steel-500 leading-relaxed">
+              <p className="mt-6 text-base sm:text-lg text-white/70 leading-relaxed">
                 Configure Colorbond roofing, cladding, flashings and rainwater goods online with{' '}
-                <span className="text-steel-800 font-semibold">instant pricing</span> — delivered anywhere in Australia.
-              </motion.p>
+                <span className="text-white font-semibold">instant pricing</span> — delivered anywhere in Australia.
+              </p>
 
-              <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, ease, delay: 0.55 }}
-                className="mt-8 flex flex-wrap items-center gap-4">
+              <div className="mt-8 flex flex-wrap items-center gap-4">
                 <Link href="/products"
                   className="group inline-flex items-center gap-2.5 rounded-xl bg-brand-600 px-7 py-3.5 text-sm font-bold text-white shadow-lg shadow-brand-600/25 hover:bg-brand-500 hover:-translate-y-0.5 transition-all duration-300">
                   Shop All Products <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
                 <Link href="/contact"
-                  className="inline-flex items-center gap-2 rounded-xl border-2 border-steel-200 px-7 py-3.5 text-sm font-semibold text-steel-700 hover:border-brand-300 hover:text-brand-600 transition-all duration-300">
+                  className="inline-flex items-center gap-2 rounded-xl border-2 border-white/25 px-7 py-3.5 text-sm font-semibold text-white hover:bg-white/10 hover:border-white/40 transition-all duration-300">
                   Get a Quote
                 </Link>
-              </motion.div>
+              </div>
 
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                transition={{ duration: 0.8, delay: 0.8 }}
-                className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-steel-400">
+              <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-white/50">
                 {['No Minimum Order', 'Instant Pricing', 'GST Invoice', 'Trade Accounts'].map((t) => (
                   <div key={t} className="flex items-center gap-1.5">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-brand-500" />{t}
+                    <CheckCircle2 className="h-3.5 w-3.5 text-brand-400" />{t}
                   </div>
                 ))}
-              </motion.div>
+              </div>
 
               {/* Trust stats */}
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 1 }}
-                className="mt-10 flex items-center gap-8 border-t border-steel-100 pt-8">
+              <div className="mt-10 flex items-center gap-8 border-t border-white/10 pt-8">
                 {[
                   { val: '500+', label: 'Products' },
                   { val: '15+', label: 'Years' },
                   { val: '98%', label: 'Satisfaction' },
                 ].map((s) => (
                   <div key={s.label}>
-                    <div className="text-2xl font-black text-steel-900">{s.val}</div>
-                    <div className="text-xs text-steel-400 font-medium">{s.label}</div>
+                    <div className="text-2xl font-black text-white">{s.val}</div>
+                    <div className="text-xs text-white/40 font-medium">{s.label}</div>
                   </div>
                 ))}
-              </motion.div>
-            </motion.div>
-
-            {/* Right — Hero visual */}
-            <motion.div initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 1, ease, delay: 0.3 }}
-              className="flex-1 relative hidden lg:flex items-center justify-center">
-              {/* Large gradient circle bg */}
-              <div className="absolute w-[500px] h-[500px] rounded-full bg-gradient-to-br from-brand-50 via-brand-100/50 to-transparent -right-10 -top-10" />
-
-              {/* Product cards floating */}
-              <div className="relative w-[480px] h-[480px]">
-                {/* Main featured product */}
-                {products[0] && (
-                  <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-                    className="absolute top-[10%] left-[10%] w-[260px] rounded-2xl bg-white shadow-2xl shadow-steel-200/60 border border-steel-100 overflow-hidden z-10">
-                    <div className="h-[180px] bg-steel-50 flex items-center justify-center p-4">
-                      {products[0].images?.[0]?.url ? (
-                        <img src={products[0].images[0].url} alt={products[0].name} className="max-h-full max-w-full object-contain" />
-                      ) : <Package className="h-16 w-16 text-steel-200" />}
-                    </div>
-                    <div className="p-4">
-                      <div className="text-[10px] font-bold text-brand-500 uppercase tracking-wider">{products[0].category?.name}</div>
-                      <div className="text-sm font-bold text-steel-900 mt-1 line-clamp-1">{products[0].name}</div>
-                      {products[0].priceRange && (
-                        <div className="text-sm font-black text-brand-600 mt-1">From {formatCurrency(products[0].priceRange.min)}</div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Secondary product card */}
-                {products[1] && (
-                  <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-                    className="absolute bottom-[15%] right-[0%] w-[200px] rounded-xl bg-white shadow-xl shadow-steel-200/40 border border-steel-100 overflow-hidden z-20">
-                    <div className="h-[120px] bg-steel-50 flex items-center justify-center p-3">
-                      {products[1].images?.[0]?.url ? (
-                        <img src={products[1].images[0].url} alt={products[1].name} className="max-h-full max-w-full object-contain" />
-                      ) : <Package className="h-12 w-12 text-steel-200" />}
-                    </div>
-                    <div className="p-3">
-                      <div className="text-xs font-bold text-steel-900 line-clamp-1">{products[1].name}</div>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Floating badges */}
-                <motion.div animate={{ y: [0, -6, 0], x: [0, 4, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
-                  className="absolute top-[5%] right-[10%] bg-white rounded-xl shadow-lg border border-steel-100 px-4 py-3 z-30">
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg bg-green-50 flex items-center justify-center">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    </div>
-                    <div>
-                      <div className="text-[10px] font-bold text-steel-900">Quality Assured</div>
-                      <div className="text-[9px] text-steel-400">AS Standards</div>
-                    </div>
-                  </div>
-                </motion.div>
-
-                <motion.div animate={{ y: [0, 6, 0] }} transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-                  className="absolute bottom-[5%] left-[5%] bg-white rounded-xl shadow-lg border border-steel-100 px-4 py-3 z-30">
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg bg-brand-50 flex items-center justify-center">
-                      <Truck className="h-4 w-4 text-brand-500" />
-                    </div>
-                    <div>
-                      <div className="text-[10px] font-bold text-steel-900">Fast Delivery</div>
-                      <div className="text-[9px] text-steel-400">Australia-wide</div>
-                    </div>
-                  </div>
-                </motion.div>
               </div>
-            </motion.div>
+            </div>
+
+            {/* Right — Fixed circle + figure-8 orbiting cards */}
+            <div className="flex-1 relative hidden lg:flex items-center justify-center">
+              <div className="relative w-[480px] h-[480px]">
+                {/* Fixed white circle */}
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] rounded-full bg-white/12 backdrop-blur-sm border border-white/10" />
+
+                {/* Figure-8 orbiting cards */}
+                <OrbitingCard
+                  index={0}
+                  totalCards={4}
+                  products={products}
+                />
+                <OrbitingCard
+                  index={1}
+                  totalCards={4}
+                  products={products}
+                />
+                <OrbitingCard
+                  index={2}
+                  totalCards={4}
+                  products={products}
+                />
+                <OrbitingCard
+                  index={3}
+                  totalCards={4}
+                  products={products}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </section>
