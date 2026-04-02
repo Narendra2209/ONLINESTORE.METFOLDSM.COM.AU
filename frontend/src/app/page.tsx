@@ -715,6 +715,30 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ═══════════════  TRUST BADGES  ══════════════════════════════════ */}
+      <section className="bg-steel-900 border-b border-steel-800">
+        <div className="container-main py-5 sm:py-8">
+          <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-4">
+            {[
+              { icon: Truck, label: 'Fast Delivery', sub: 'Australia-wide shipping' },
+              { icon: Shield, label: 'Quality Guaranteed', sub: 'Premium materials' },
+              { icon: Headphones, label: 'Quick Turnaround', sub: 'Same-day processing' },
+              { icon: Award, label: 'Secure Payment', sub: 'SSL encrypted checkout' },
+            ].map((badge) => (
+              <div key={badge.label} className="flex items-start gap-3 group">
+                <div className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600/10 text-brand-400 group-hover:bg-brand-600/20 transition-colors">
+                  <badge.icon className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white">{badge.label}</p>
+                  <p className="text-xs text-steel-400">{badge.sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ═══════════════  CONTACT  ═════════════════════════════════════════ */}
       <section aria-label="Contact" className="py-14 bg-steel-950 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_100%_at_50%_50%,rgba(0,116,197,0.04),transparent)] pointer-events-none" />

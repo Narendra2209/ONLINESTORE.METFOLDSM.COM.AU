@@ -7,6 +7,7 @@ const router = Router();
 
 // Customer routes
 router.post('/', optionalAuth, orderController.createOrder);
+router.get('/track', orderController.trackOrder);
 router.get('/', authenticate, orderController.getMyOrders);
 router.get('/my-orders', authenticate, orderController.getMyOrders);
 router.get('/:orderNumber', authenticate, orderController.getOrderByNumber);

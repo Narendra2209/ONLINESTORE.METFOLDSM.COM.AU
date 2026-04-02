@@ -52,6 +52,15 @@ export const getOrderByNumber = catchAsync(async (req: AuthRequest, res: Respons
   ApiResponse.success({ res, data: order });
 });
 
+export const trackOrder = catchAsync(async (req: Request, res: Response) => {
+  const { orderNumber, email } = req.query as { orderNumber: string; email: string };
+  if (!orderNumber || !email) {
+    return ApiResponse.success({ res, statusCode: 400, message: 'Order number and email are required' });
+  }
+  const order = await orderService.trackOrder(orderNumber, email);
+  ApiResponse.success({ res, data: order });
+});
+
 // Admin
 export const getAllOrders = catchAsync(async (req: Request, res: Response) => {
   const result = await orderService.getAllOrders(req.query);

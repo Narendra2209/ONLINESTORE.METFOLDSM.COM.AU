@@ -160,6 +160,15 @@ export const orderService = {
     return order;
   },
 
+  async trackOrder(orderNumber: string, email: string) {
+    const order = await Order.findOne({
+      orderNumber,
+      customerEmail: email.toLowerCase(),
+    });
+    if (!order) throw ApiError.notFound('Order not found');
+    return order;
+  },
+
   async getUserOrders(userId: string, page = 1, limit = 10) {
     const skip = (page - 1) * limit;
     const [orders, total] = await Promise.all([
