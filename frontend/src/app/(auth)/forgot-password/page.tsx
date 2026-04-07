@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import toast from 'react-hot-toast';
 import { Mail, ArrowLeft, KeyRound, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import LogoLoader from '@/components/ui/LogoLoader';
 
 function OtpInput({ length = 6, onComplete }: { length?: number; onComplete: (otp: string) => void }) {
   const [values, setValues] = useState<string[]>(Array(length).fill(''));
@@ -182,9 +183,8 @@ export default function ForgotPasswordPage() {
         </div>
 
         {isLoading && (
-          <div className="text-center mb-6">
-            <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-brand-600 border-t-transparent" />
-            <p className="text-sm text-steel-500 mt-2">Verifying...</p>
+          <div className="flex items-center justify-center mb-6">
+            <LogoLoader size="sm" text="Verifying..." />
           </div>
         )}
 

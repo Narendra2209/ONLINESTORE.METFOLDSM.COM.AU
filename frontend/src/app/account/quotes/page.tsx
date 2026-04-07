@@ -7,6 +7,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import Badge from '@/components/ui/Badge';
 import toast from 'react-hot-toast';
 import { FileText } from 'lucide-react';
+import LogoLoader from '@/components/ui/LogoLoader';
 
 interface QuoteOrder {
   _id: string;
@@ -40,10 +41,8 @@ export default function AccountQuotesPage() {
       <h2 className="text-xl font-semibold text-steel-900 mb-4">Quote Requests</h2>
 
       {loading ? (
-        <div className="space-y-3">
-          {[1, 2].map((i) => (
-            <div key={i} className="rounded-xl bg-white border border-steel-100 p-5 h-20 animate-pulse" />
-          ))}
+        <div className="flex items-center justify-center py-20">
+          <LogoLoader text="Loading quotes..." />
         </div>
       ) : quotes.length === 0 ? (
         <div className="rounded-xl bg-white border border-steel-100 p-12 text-center">

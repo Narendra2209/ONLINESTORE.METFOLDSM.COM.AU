@@ -8,6 +8,7 @@ import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import { Category } from '@/types/product';
 import toast from 'react-hot-toast';
+import LogoLoader from '@/components/ui/LogoLoader';
 import { Plus, Edit, Trash2, ChevronRight, ChevronDown, FolderTree, GripVertical } from 'lucide-react';
 
 export default function AdminCategoriesPage() {
@@ -203,9 +204,9 @@ export default function AdminCategoriesPage() {
           </thead>
           <tbody className="divide-y divide-steel-50">
             {loading ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <tr key={i}><td colSpan={6} className="px-4 py-4"><div className="h-4 w-full animate-pulse rounded bg-steel-100" /></td></tr>
-              ))
+              <tr><td colSpan={6} className="px-4 py-12 text-center">
+                <LogoLoader size="sm" text="Loading..." />
+              </td></tr>
             ) : categories.length === 0 ? (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-steel-500">No categories yet</td></tr>
             ) : (

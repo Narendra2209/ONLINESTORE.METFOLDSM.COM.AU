@@ -6,11 +6,12 @@ import api from '@/lib/axios';
 import { Product } from '@/types/product';
 import ProductCard from '@/components/product/ProductCard';
 import Pagination from '@/components/ui/Pagination';
+import LogoLoader from '@/components/ui/LogoLoader';
 import { Search as SearchIcon } from 'lucide-react';
 
 export default function SearchPage() {
   return (
-    <Suspense fallback={<div className="container-main section-padding text-center py-16"><p className="text-steel-500">Loading...</p></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[50vh]"><LogoLoader size="lg" text="Loading search..." /></div>}>
       <SearchPageContent />
     </Suspense>
   );
@@ -60,10 +61,8 @@ function SearchPageContent() {
           <p className="text-steel-500">Enter a search term to find products</p>
         </div>
       ) : loading ? (
-        <div className="grid grid-cols-4 gap-5">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="rounded-xl bg-white border border-steel-100 p-4 h-72 animate-pulse" />
-          ))}
+        <div className="flex items-center justify-center py-20">
+          <LogoLoader text="Loading..." />
         </div>
       ) : products.length === 0 ? (
         <div className="text-center py-16">

@@ -8,6 +8,7 @@ import Modal from '@/components/ui/Modal';
 import Badge from '@/components/ui/Badge';
 import toast from 'react-hot-toast';
 import { Plus, Edit, Trash2, MapPin } from 'lucide-react';
+import LogoLoader from '@/components/ui/LogoLoader';
 
 interface Address {
   _id: string;
@@ -117,10 +118,8 @@ export default function AccountAddressesPage() {
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-2 gap-4">
-          {[1, 2].map((i) => (
-            <div key={i} className="rounded-xl bg-white border border-steel-100 p-5 h-32 animate-pulse" />
-          ))}
+        <div className="flex items-center justify-center py-20">
+          <LogoLoader text="Loading addresses..." />
         </div>
       ) : addresses.length === 0 ? (
         <div className="rounded-xl bg-white border border-steel-100 p-12 text-center text-steel-500">

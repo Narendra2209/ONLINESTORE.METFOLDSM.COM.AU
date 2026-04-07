@@ -8,6 +8,7 @@ import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import { Attribute, AttributeValue } from '@/types/product';
 import toast from 'react-hot-toast';
+import LogoLoader from '@/components/ui/LogoLoader';
 import { Plus, Edit, Trash2, X } from 'lucide-react';
 
 export default function AdminAttributesPage() {
@@ -164,11 +165,9 @@ export default function AdminAttributesPage() {
 
       <div className="mt-6 grid gap-4">
         {loading ? (
-          Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-xl bg-white border border-steel-100 p-6">
-              <div className="h-4 w-48 animate-pulse rounded bg-steel-100" />
-            </div>
-          ))
+          <div className="flex items-center justify-center py-20">
+            <LogoLoader text="Loading..." />
+          </div>
         ) : attributes.length === 0 ? (
           <div className="rounded-xl bg-white border border-steel-100 p-12 text-center text-steel-500">
             No attributes defined yet

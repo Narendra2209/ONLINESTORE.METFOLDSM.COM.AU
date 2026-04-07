@@ -9,6 +9,7 @@ import Breadcrumb from '@/components/ui/Breadcrumb';
 import Button from '@/components/ui/Button';
 import toast from 'react-hot-toast';
 import api from '@/lib/axios';
+import LogoLoader from '@/components/ui/LogoLoader';
 
 // ── TYPES ──
 
@@ -344,17 +345,8 @@ export default function CladdingPage() {
 
   if (loading) {
     return (
-      <div className="bg-white min-h-screen">
-        <div className="container-main py-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-6 bg-steel-100 rounded w-48" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-64 bg-steel-50 rounded-xl" />
-              ))}
-            </div>
-          </div>
-        </div>
+      <div className="flex items-center justify-center py-20">
+        <LogoLoader text="Loading..." />
       </div>
     );
   }

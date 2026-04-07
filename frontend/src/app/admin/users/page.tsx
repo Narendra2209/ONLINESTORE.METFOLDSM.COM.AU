@@ -7,6 +7,7 @@ import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import toast from 'react-hot-toast';
+import LogoLoader from '@/components/ui/LogoLoader';
 import { Plus, Edit, Trash2, Shield } from 'lucide-react';
 
 interface AdminUser {
@@ -307,9 +308,9 @@ export default function AdminUsersPage() {
             </thead>
             <tbody className="divide-y divide-steel-50">
               {loading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <tr key={i}><td colSpan={6} className="px-4 py-4"><div className="h-4 w-full animate-pulse rounded bg-steel-100" /></td></tr>
-                ))
+                <tr><td colSpan={6} className="px-4 py-12 text-center">
+                  <LogoLoader size="sm" text="Loading..." />
+                </td></tr>
               ) : (
                 users.map((user) => (
                   <tr key={user._id} className="hover:bg-steel-50/50">

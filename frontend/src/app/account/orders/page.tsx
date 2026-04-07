@@ -8,6 +8,7 @@ import Badge from '@/components/ui/Badge';
 import Pagination from '@/components/ui/Pagination';
 import toast from 'react-hot-toast';
 import { Package, ChevronRight, ShoppingBag } from 'lucide-react';
+import LogoLoader from '@/components/ui/LogoLoader';
 
 interface OrderItem {
   productName: string;
@@ -84,13 +85,9 @@ export default function AccountOrdersPage() {
 
       <div className="space-y-4">
         {loading ? (
-          Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-xl bg-white border border-steel-100 p-5 animate-pulse">
-              <div className="h-5 w-40 bg-steel-100 rounded mb-3" />
-              <div className="h-4 w-full bg-steel-50 rounded mb-2" />
-              <div className="h-4 w-2/3 bg-steel-50 rounded" />
-            </div>
-          ))
+          <div className="flex items-center justify-center py-20">
+            <LogoLoader text="Loading orders..." />
+          </div>
         ) : (
           orders.map((order) => (
             <Link

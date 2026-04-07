@@ -13,6 +13,7 @@ import Select from '@/components/ui/Select';
 import toast from 'react-hot-toast';
 import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
 import { Mail, ArrowLeft, ShieldCheck, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import LogoLoader from '@/components/ui/LogoLoader';
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 
@@ -207,9 +208,8 @@ function RegisterContent() {
         </div>
 
         {isLoading && (
-          <div className="text-center mb-6">
-            <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-brand-600 border-t-transparent" />
-            <p className="text-sm text-steel-500 mt-2">Verifying your code...</p>
+          <div className="flex items-center justify-center mb-6">
+            <LogoLoader size="sm" text="Verifying your code..." />
           </div>
         )}
 

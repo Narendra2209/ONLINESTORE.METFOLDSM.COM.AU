@@ -5,6 +5,7 @@ import api from '@/lib/axios';
 import Badge from '@/components/ui/Badge';
 import Pagination from '@/components/ui/Pagination';
 import toast from 'react-hot-toast';
+import LogoLoader from '@/components/ui/LogoLoader';
 import { Search, Mail, Phone } from 'lucide-react';
 
 interface Customer {
@@ -113,9 +114,9 @@ export default function AdminCustomersPage() {
           </thead>
           <tbody className="divide-y divide-steel-50">
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i}><td colSpan={6} className="px-4 py-4"><div className="h-4 w-full animate-pulse rounded bg-steel-100" /></td></tr>
-              ))
+              <tr><td colSpan={6} className="px-4 py-12 text-center">
+                <LogoLoader size="sm" text="Loading..." />
+              </td></tr>
             ) : customers.length === 0 ? (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-steel-500">No customers found</td></tr>
             ) : (

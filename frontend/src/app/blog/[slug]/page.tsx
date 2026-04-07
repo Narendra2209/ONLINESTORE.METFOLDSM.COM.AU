@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import api from '@/lib/axios';
 import { formatDate } from '@/lib/utils';
+import LogoLoader from '@/components/ui/LogoLoader';
 import { ArrowLeft, Calendar, User, Eye } from 'lucide-react';
 
 interface BlogPost {
@@ -43,16 +44,8 @@ export default function BlogPostPage() {
 
   if (loading) {
     return (
-      <div className="container-main section-padding">
-        <div className="max-w-3xl mx-auto">
-          <div className="h-8 w-3/4 bg-steel-100 animate-pulse rounded mb-4" />
-          <div className="h-64 bg-steel-100 animate-pulse rounded-xl mb-6" />
-          <div className="space-y-3">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-4 w-full bg-steel-100 animate-pulse rounded" />
-            ))}
-          </div>
-        </div>
+      <div className="flex items-center justify-center py-20">
+        <LogoLoader text="Loading..." />
       </div>
     );
   }

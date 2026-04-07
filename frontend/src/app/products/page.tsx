@@ -8,33 +8,14 @@ import ProductCard from '@/components/product/ProductCard';
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import Select from '@/components/ui/Select';
 import Pagination from '@/components/ui/Pagination';
-import Skeleton from '@/components/ui/Skeleton';
+import LogoLoader from '@/components/ui/LogoLoader';
 import { Search, Package } from 'lucide-react';
 
 export default function ProductListingPage() {
   return (
     <Suspense fallback={
-      <div className="bg-steel-50 min-h-screen">
-        <div className="bg-white border-b border-steel-100">
-          <div className="container-main py-8">
-            <Skeleton className="h-4 w-32 mb-3" />
-            <Skeleton className="h-8 w-48" />
-          </div>
-        </div>
-        <div className="container-main py-8">
-          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="rounded-xl border border-steel-100 bg-white overflow-hidden">
-                <Skeleton className="aspect-[4/3] w-full rounded-none" />
-                <div className="p-4 space-y-2">
-                  <Skeleton className="h-3 w-16" />
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-6 w-1/3 mt-2" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <LogoLoader size="lg" text="Loading products..." />
       </div>
     }>
       <ProductListingContent />
@@ -162,18 +143,8 @@ function ProductListingContent() {
 
         {/* Products grid */}
         {loading ? (
-          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="rounded-xl border border-steel-100 bg-white overflow-hidden">
-                <Skeleton className="aspect-[4/3] w-full rounded-none" />
-                <div className="p-4 space-y-2">
-                  <Skeleton className="h-3 w-16" />
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                  <Skeleton className="h-6 w-1/3 mt-2" />
-                </div>
-              </div>
-            ))}
+          <div className="flex items-center justify-center py-20">
+            <LogoLoader text="Loading..." />
           </div>
         ) : products.length === 0 ? (
           <div className="py-20 text-center">

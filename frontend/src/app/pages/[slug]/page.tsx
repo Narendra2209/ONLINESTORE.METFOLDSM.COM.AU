@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import api from '@/lib/axios';
+import LogoLoader from '@/components/ui/LogoLoader';
 
 interface PageContent {
   title: string;
@@ -31,12 +32,8 @@ export default function DynamicPage() {
 
   if (loading) {
     return (
-      <div className="container-main section-padding">
-        <div className="max-w-3xl mx-auto space-y-4">
-          <div className="h-8 w-1/2 bg-steel-100 animate-pulse rounded" />
-          <div className="h-4 w-full bg-steel-100 animate-pulse rounded" />
-          <div className="h-4 w-3/4 bg-steel-100 animate-pulse rounded" />
-        </div>
+      <div className="flex items-center justify-center py-20">
+        <LogoLoader text="Loading..." />
       </div>
     );
   }

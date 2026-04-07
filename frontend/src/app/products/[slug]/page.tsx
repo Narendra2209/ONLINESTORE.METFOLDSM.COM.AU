@@ -9,7 +9,7 @@ import { useAuthStore } from '@/store/authStore';
 import ProductConfigurator from '@/components/product/ProductConfigurator';
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import Badge from '@/components/ui/Badge';
-import Skeleton from '@/components/ui/Skeleton';
+import LogoLoader from '@/components/ui/LogoLoader';
 import { cn } from '@/lib/utils';
 import { Package, FileText, Truck, Shield, ZoomIn, Upload, Loader2, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -71,25 +71,8 @@ export default function ProductDetailPage() {
 
   if (loading) {
     return (
-      <div className="container-main py-8 animate-fade-in-up">
-        <Skeleton className="h-4 w-48 mb-6" />
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
-          <div>
-            <Skeleton className="aspect-square w-full rounded-xl" />
-            <div className="mt-4 flex gap-2">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-16 w-16 rounded-lg" />
-              ))}
-            </div>
-          </div>
-          <div className="space-y-4">
-            <Skeleton className="h-5 w-20" />
-            <Skeleton className="h-9 w-3/4" />
-            <Skeleton className="h-4 w-1/3" />
-            <Skeleton className="h-20 w-full mt-4" />
-            <Skeleton className="h-48 w-full mt-4" />
-          </div>
-        </div>
+      <div className="flex items-center justify-center py-20">
+        <LogoLoader text="Loading..." />
       </div>
     );
   }
