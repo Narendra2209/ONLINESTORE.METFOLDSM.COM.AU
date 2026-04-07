@@ -122,10 +122,10 @@ export default function FlashingConfigurator() {
   const [foldAngles, setFoldAngles] = useState<number[]>([]);
 
   // Config state
-  const [material, setMaterial] = useState('Colorbond');
+  const [material, setMaterial] = useState('');
   const [colour, setColour] = useState('');
   const [colourSide, setColourSide] = useState<'Inside' | 'Outside'>('Outside'); // Which side has the colour
-  const [gauge, setGauge] = useState('0.55mm');
+  const [gauge, setGauge] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [flashingLength, setFlashingLength] = useState(0); // length in metres (max 8m)
   const [tagName, setTagName] = useState('');
@@ -139,10 +139,7 @@ export default function FlashingConfigurator() {
         if (cfg.points?.length > 0) setPoints(cfg.points);
         if (cfg.segments?.length > 0) setSegments(cfg.segments);
         if (cfg.foldAngles) setFoldAngles(cfg.foldAngles);
-        if (cfg.material) setMaterial(cfg.material);
-        if (cfg.colour) setColour(cfg.colour);
         if (cfg.colourSide) setColourSide(cfg.colourSide);
-        if (cfg.gauge) setGauge(cfg.gauge);
         if (cfg.quantity) setQuantity(cfg.quantity);
         if (cfg.flashingLength) setFlashingLength(cfg.flashingLength);
         if (cfg.tagName) setTagName(cfg.tagName);
@@ -653,27 +650,27 @@ export default function FlashingConfigurator() {
 
                   return (
                     <g key={`seg-${i}`}>
-                      {isEditingSeg ? (
-                        <foreignObject x={finalLabelX - 38} y={finalLabelY - 16} width="76" height="32"
-                          style={{ cursor: 'move' }}
-                          onMouseDown={(e) => {
-                            e.stopPropagation();
-                            if ((e.target as HTMLElement).tagName === 'INPUT') return;
-                            labelDragRef.current = { type: 'seg', idx: i, startX: e.clientX, startY: e.clientY, origDx: segOff.dx, origDy: segOff.dy };
-                            const onMove = (ev: MouseEvent) => {
-                              if (!labelDragRef.current) return;
-                              const ddx = ev.clientX - labelDragRef.current.startX;
-                              const ddy = ev.clientY - labelDragRef.current.startY;
-                              setSegLabelOffsets((prev) => ({ ...prev, [i]: { dx: labelDragRef.current!.origDx + ddx, dy: labelDragRef.current!.origDy + ddy } }));
-                            };
-                            const onUp = () => { labelDragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-                            window.addEventListener('mousemove', onMove);
-                            window.addEventListener('mouseup', onUp);
-                          }}
-                        >
-                          <div className="flex items-center justify-center h-full">
+                      <foreignObject x={finalLabelX - 48} y={finalLabelY - 16} width="96" height="32"
+                        style={{ cursor: 'move' }}
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          if ((e.target as HTMLElement).tagName === 'INPUT') return;
+                          labelDragRef.current = { type: 'seg', idx: i, startX: e.clientX, startY: e.clientY, origDx: segOff.dx, origDy: segOff.dy };
+                          const onMove = (ev: MouseEvent) => {
+                            if (!labelDragRef.current) return;
+                            const ddx = ev.clientX - labelDragRef.current.startX;
+                            const ddy = ev.clientY - labelDragRef.current.startY;
+                            setSegLabelOffsets((prev) => ({ ...prev, [i]: { dx: labelDragRef.current!.origDx + ddx, dy: labelDragRef.current!.origDy + ddy } }));
+                          };
+                          const onUp = () => { labelDragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+                          window.addEventListener('mousemove', onMove);
+                          window.addEventListener('mouseup', onUp);
+                        }}
+                      >
+                        <div className="flex items-center justify-center h-full">
+                          {isEditingSeg ? (
                             <div className="flex items-center bg-white border-2 border-blue-500 rounded-md px-1.5 py-0.5 shadow-md gap-1">
-                              <span className="text-[11px] font-bold text-blue-600 cursor-move">{letter}</span>
+                              <span className="text-[11px] font-bold text-blue-600 cursor-move select-none">{letter}</span>
                               <input
                                 type="number"
                                 min={0}
@@ -683,37 +680,27 @@ export default function FlashingConfigurator() {
                                 onBlur={() => setEditingSegment(null)}
                                 onKeyDown={(e) => { if (e.key === 'Enter') setEditingSegment(null); }}
                                 onClick={(e) => e.stopPropagation()}
-                                className="w-[40px] text-[13px] font-bold text-blue-800 text-center bg-transparent outline-none border-none p-0 cursor-text"
+                                className="w-[44px] text-[12px] font-bold text-blue-800 text-center bg-transparent outline-none border-none p-0 cursor-text"
                                 placeholder="mm"
                               />
                             </div>
-                          </div>
-                        </foreignObject>
-                      ) : (
-                        <g
-                          style={{ cursor: 'move' }}
-                          onMouseDown={(e) => {
-                            e.stopPropagation();
-                            labelDragRef.current = { type: 'seg', idx: i, startX: e.clientX, startY: e.clientY, origDx: segOff.dx, origDy: segOff.dy };
-                            const onMove = (ev: MouseEvent) => {
-                              if (!labelDragRef.current) return;
-                              const ddx = ev.clientX - labelDragRef.current.startX;
-                              const ddy = ev.clientY - labelDragRef.current.startY;
-                              setSegLabelOffsets((prev) => ({ ...prev, [i]: { dx: labelDragRef.current!.origDx + ddx, dy: labelDragRef.current!.origDy + ddy } }));
-                            };
-                            const onUp = () => { labelDragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-                            window.addEventListener('mousemove', onMove);
-                            window.addEventListener('mouseup', onUp);
-                          }}
-                          onClick={(e) => { e.stopPropagation(); setEditingSegment(i); }}
-                        >
-                          {/* Invisible hit area for dragging/clicking */}
-                          <rect x={finalLabelX - 36} y={finalLabelY - 14} width="72" height="28" rx="5" fill="transparent" />
-                          <text x={finalLabelX} y={finalLabelY + 5} textAnchor="middle" fontSize="16" fontWeight="bold" fill="#1d4ed8">
-                            {seg.lengthMm > 0 ? `${seg.lengthMm}mm` : letter}
-                          </text>
-                        </g>
-                      )}
+                          ) : seg.lengthMm > 0 ? (
+                            <span
+                              className="text-[13px] font-bold text-blue-800 cursor-pointer select-none"
+                              onClick={(e) => { e.stopPropagation(); setEditingSegment(i); }}
+                            >
+                              {seg.lengthMm}
+                            </span>
+                          ) : (
+                            <div
+                              className="flex items-center bg-white border-2 border-blue-500 rounded-md px-2 py-0.5 shadow-md cursor-pointer"
+                              onClick={(e) => { e.stopPropagation(); setEditingSegment(i); }}
+                            >
+                              <span className="text-[12px] font-bold text-blue-600 select-none">{letter}</span>
+                            </div>
+                          )}
+                        </div>
+                      </foreignObject>
                     </g>
                   );
                 });
@@ -898,44 +885,40 @@ export default function FlashingConfigurator() {
           </div>
 
           {/* Controls — below on mobile, right side on desktop */}
-          <div className="md:w-[140px] flex-shrink-0 flex flex-wrap md:flex-col gap-2">
-            {/* Reverse Colour Side */}
+          <div className="md:w-[140px] flex-shrink-0 flex flex-wrap md:flex-col gap-1.5">
             <button
               onClick={() => setColourSide(colourSide === 'Inside' ? 'Outside' : 'Inside')}
-              className="w-full py-2 text-[11px] font-semibold rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+              className="w-full py-2 text-[11px] font-semibold rounded-lg bg-brand-600 text-white hover:bg-brand-700 transition-colors"
             >
               Reverse Color
             </button>
 
-            {/* Remove First */}
             <button
               onClick={removeFirst}
               disabled={points.length <= 2}
               className={cn(
                 'w-full flex items-center justify-center gap-1 px-2 py-2 text-[11px] font-semibold rounded-lg transition-colors',
-                points.length <= 2 ? 'bg-steel-100 text-steel-400 cursor-not-allowed' : 'bg-pink-500 text-white hover:bg-pink-600'
+                points.length <= 2 ? 'bg-brand-300 text-white cursor-not-allowed' : 'bg-brand-600 text-white hover:bg-brand-700'
               )}
             >
               Remove First
             </button>
 
-            {/* Remove Last */}
             <button
               onClick={removeLast}
               disabled={points.length <= 2}
               className={cn(
                 'w-full flex items-center justify-center gap-1 px-2 py-2 text-[11px] font-semibold rounded-lg transition-colors',
-                points.length <= 2 ? 'bg-steel-100 text-steel-400 cursor-not-allowed' : 'bg-green-500 text-white hover:bg-green-600'
+                points.length <= 2 ? 'bg-brand-300 text-white cursor-not-allowed' : 'bg-brand-600 text-white hover:bg-brand-700'
               )}
             >
               Remove Last
             </button>
 
-            {/* Start Fold */}
             <div className="relative">
               <button
                 onClick={() => { setShowStartFoldMenu(!showStartFoldMenu); setShowEndFoldMenu(false); }}
-                className="w-full flex items-center justify-center gap-1 px-2 py-2 text-[11px] font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                className="w-full flex items-center justify-center gap-1 px-2 py-2 text-[11px] font-semibold rounded-lg bg-brand-600 text-white hover:bg-brand-700 transition-colors"
               >
                 Start Fold <ChevronDown className="h-3 w-3" />
               </button>
@@ -973,11 +956,10 @@ export default function FlashingConfigurator() {
               )}
             </div>
 
-            {/* End Fold — at the bottom */}
             <div className="relative">
               <button
                 onClick={() => { setShowEndFoldMenu(!showEndFoldMenu); setShowStartFoldMenu(false); }}
-                className="w-full flex items-center justify-center gap-1 px-2 py-2 text-[11px] font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
+                className="w-full flex items-center justify-center gap-1 px-2 py-2 text-[11px] font-semibold rounded-lg bg-brand-600 text-white hover:bg-brand-700 transition-colors"
               >
                 End Fold <ChevronDown className="h-3 w-3" />
               </button>
@@ -1073,7 +1055,7 @@ export default function FlashingConfigurator() {
                 className={cn(
                   'px-3 py-2 rounded-lg text-sm font-medium border-2 transition-all',
                   material === mat
-                    ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-sm'
+                    ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
                     : 'border-steel-200 text-steel-600 hover:border-steel-300 hover:bg-steel-50'
                 )}
               >
@@ -1096,7 +1078,7 @@ export default function FlashingConfigurator() {
                 className={cn(
                   'px-3 py-2 rounded-lg text-sm font-medium border-2 transition-all',
                   gauge === g
-                    ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-sm'
+                    ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
                     : 'border-steel-200 text-steel-600 hover:border-steel-300 hover:bg-steel-50'
                 )}
               >

@@ -778,12 +778,21 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
     // BUT preserve any single-value attributes (like Rib=25mm for Interlocking)
     const handleMaterialSelect = (material: string) => {
       const newAttrs: Record<string, string> = { [materialAttrKey]: material };
-      // Re-apply auto-selected single-value attributes
+      // Preserve dimension values and re-apply auto-selected single-value attributes
       for (const an of attrNames) {
         if (an === materialAttrKey) continue;
         const totalVals = variantAttributeOptions[an]?.values;
         if (totalVals && totalVals.size === 1) {
           newAttrs[an] = Array.from(totalVals)[0];
+        } else if (DIMENSION_ATTRS.includes(an) && selectedAttributes[an]) {
+          // Keep user-entered dimension values when switching material
+          newAttrs[an] = selectedAttributes[an];
+        }
+      }
+      // Preserve internal keys like _userLength
+      for (const key of Object.keys(selectedAttributes)) {
+        if (key.startsWith('_') && selectedAttributes[key]) {
+          newAttrs[key] = selectedAttributes[key];
         }
       }
       setSelectedAttributes(newAttrs);
