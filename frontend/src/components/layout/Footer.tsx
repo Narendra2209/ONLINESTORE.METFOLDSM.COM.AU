@@ -122,7 +122,7 @@ export default function Footer() {
       <div className="border-t border-[#21262d]">
         <div className="container-main py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-[11px] text-[#484f58]">
-            &copy; {new Date().getFullYear()} Metfold Sheet Metal Pty Ltd. All rights reserved.
+            &copy; {new Date().getFullYear()} Metfold Sheet Metal. All rights reserved.
           </p>
           <div className="flex items-center gap-4 text-[11px] text-[#484f58]">
             <Link href="/terms" className="hover:text-[#8b949e] transition-colors">Terms</Link>

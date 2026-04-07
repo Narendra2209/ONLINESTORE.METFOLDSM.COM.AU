@@ -165,22 +165,76 @@ function ProductShowcase({ products }: { products: Product[] }) {
   const img = p?.images?.find((im) => im.isDefault)?.url || p?.images?.[0]?.url;
 
   return (
-    <section aria-label="Product Showcase" className="py-12 lg:py-16 bg-white relative overflow-hidden">
+    <section aria-label="Product Showcase" className="py-10 sm:py-12 lg:py-16 bg-white relative overflow-hidden">
       <div className="container-main">
         <Reveal>
-          <div className="relative flex items-center justify-center">
-            {/* Main layout */}
-            <div className="relative w-full max-w-[900px] mx-14 lg:mx-20 h-[300px] lg:h-[360px]">
-              {/* Orange card — large, behind left */}
-              <div className="absolute left-5 top-[-8%] bottom-[-8%] w-[260px] lg:w-[330px] rounded-3xl bg-gradient-to-b from-brand-500 to-brand-700 shadow-2xl z-0">
-                <span className="absolute left-[-20px] lg:left-[-0px] top-1/2 text-white/80 font-black text-4xl lg:text-6xl tracking-wider select-none"
+          {/* Mobile: stacked card layout */}
+          <div className="block sm:hidden">
+            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-steel-800 to-steel-900 shadow-xl">
+              <div className="absolute inset-0 opacity-[0.08]" style={{
+                backgroundImage: 'url(/images/warehouse-bg.jpg)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }} />
+              <div className="relative p-6">
+                <AnimatePresence mode="wait">
+                  <motion.div key={`mob-${current}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.4, ease }}
+                  >
+                    <div className="flex justify-center mb-5">
+                      <div className="w-[180px] h-[160px] rounded-xl bg-white shadow-lg flex items-center justify-center p-3">
+                        {img ? (
+                          <img src={img} alt={p.name} className="max-w-full max-h-full object-contain" />
+                        ) : (
+                          <Package className="h-16 w-16 text-steel-200" />
+                        )}
+                      </div>
+                    </div>
+                    {p.category && (
+                      <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-300/80 mb-1 block text-center">
+                        {p.category.name}
+                      </span>
+                    )}
+                    <h3 className="text-lg font-black text-white leading-tight mb-4 text-center">
+                      {p.name}
+                    </h3>
+                    <div className="flex justify-center">
+                      <Link href={`/products/${p.slug}`}
+                        className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-6 py-2.5 text-sm font-bold text-white uppercase tracking-wider">
+                        Know More
+                      </Link>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+              {/* Mobile nav arrows */}
+              <div className="flex justify-center gap-3 pb-5">
+                <button onClick={prev} className="h-10 w-10 rounded-full bg-white/10 border border-white/15 flex items-center justify-center">
+                  <ArrowRight className="h-4 w-4 text-white rotate-180" />
+                </button>
+                <button onClick={next} className="h-10 w-10 rounded-full bg-white/10 border border-white/15 flex items-center justify-center">
+                  <ArrowRight className="h-4 w-4 text-white" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop: overlapping card layout */}
+          <div className="hidden sm:flex relative items-center justify-center">
+            <div className="relative w-full max-w-[900px] mx-14 lg:mx-20 h-[280px] sm:h-[300px] lg:h-[360px]">
+              {/* Orange card */}
+              <div className="absolute left-5 top-[-8%] bottom-[-8%] w-[200px] sm:w-[260px] lg:w-[330px] rounded-3xl bg-gradient-to-b from-brand-500 to-brand-700 shadow-2xl z-0">
+                <span className="absolute left-[-10px] sm:left-[-20px] lg:left-0 top-1/2 text-white/80 font-black text-3xl sm:text-4xl lg:text-6xl tracking-wider select-none"
                   style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'translateY(-50%) rotate(180deg)' }}>
                   PRODUCTS
                 </span>
               </div>
 
-              {/* Dark card with background image */}
-              <div className="absolute left-[140px] lg:left-[180px] right-0 top-0 bottom-0 rounded-3xl shadow-2xl z-[1] overflow-hidden">
+              {/* Dark card */}
+              <div className="absolute left-[110px] sm:left-[140px] lg:left-[180px] right-0 top-0 bottom-0 rounded-3xl shadow-2xl z-[1] overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-steel-700 via-steel-800 to-steel-900" />
                 <div className="absolute inset-0 opacity-[0.08]" style={{
                   backgroundImage: 'url(/images/warehouse-bg.jpg)',
@@ -190,55 +244,54 @@ function ProductShowcase({ products }: { products: Product[] }) {
                 <div className="absolute inset-0 bg-gradient-to-r from-steel-800/80 via-transparent to-transparent" />
               </div>
 
-              {/* Left arrow — touching orange card */}
+              {/* Left arrow */}
               <button onClick={prev}
-                className="absolute left-[2px] top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 h-12 w-12 rounded-full bg-white border border-steel-200 shadow-lg flex items-center justify-center hover:bg-steel-50 hover:shadow-xl transition-all duration-300">
-                <ArrowRight className="h-5 w-5 text-steel-700 rotate-180" />
+                className="absolute left-[2px] top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-white border border-steel-200 shadow-lg flex items-center justify-center hover:bg-steel-50 hover:shadow-xl transition-all duration-300">
+                <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-steel-700 rotate-180" />
               </button>
 
-              {/* Right arrow — touching dark card */}
+              {/* Right arrow */}
               <button onClick={next}
-                className="absolute right-[-2px] top-1/2 -translate-y-1/2 translate-x-1/2 z-20 h-12 w-12 rounded-full bg-white border border-steel-200 shadow-lg flex items-center justify-center hover:bg-steel-50 hover:shadow-xl transition-all duration-300">
-                <ArrowRight className="h-5 w-5 text-steel-700" />
+                className="absolute right-[-2px] top-1/2 -translate-y-1/2 translate-x-1/2 z-20 h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-white border border-steel-200 shadow-lg flex items-center justify-center hover:bg-steel-50 hover:shadow-xl transition-all duration-300">
+                <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-steel-700" />
               </button>
 
-              {/* Product image — white card overlapping both */}
+              {/* Product image */}
               <AnimatePresence mode="wait">
                 <motion.div key={`img-${current}`}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.4, ease }}
-                  className="absolute left-[100px] lg:left-[130px] top-[8%] bottom-[8%] w-[200px] lg:w-[250px] z-10 rounded-2xl bg-white shadow-2xl flex items-center justify-center p-4 overflow-hidden"
+                  className="absolute left-[70px] sm:left-[100px] lg:left-[130px] top-[8%] bottom-[8%] w-[150px] sm:w-[200px] lg:w-[250px] z-10 rounded-2xl bg-white shadow-2xl flex items-center justify-center p-3 sm:p-4 overflow-hidden"
                 >
                   {img ? (
-                    <img src={img} alt={p.name}
-                      className="max-w-full max-h-full object-contain" />
+                    <img src={img} alt={p.name} className="max-w-full max-h-full object-contain" />
                   ) : (
-                    <Package className="h-20 w-20 text-steel-200" />
+                    <Package className="h-16 w-16 sm:h-20 sm:w-20 text-steel-200" />
                   )}
                 </motion.div>
               </AnimatePresence>
 
-              {/* Product info — right side */}
+              {/* Product info */}
               <AnimatePresence mode="wait">
                 <motion.div key={`info-${current}`}
                   initial={{ opacity: 0, x: 40 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -30 }}
                   transition={{ duration: 0.4, ease, delay: 0.1 }}
-                  className="absolute left-[50%] lg:left-[48%] right-0 top-0 bottom-0 z-10 flex flex-col items-center justify-center px-4 lg:px-8"
+                  className="absolute left-[50%] lg:left-[48%] right-0 top-0 bottom-0 z-10 flex flex-col items-center justify-center px-3 sm:px-4 lg:px-8"
                 >
                   {p.category && (
-                    <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-300/80 mb-2">
+                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.25em] text-brand-300/80 mb-2">
                       {p.category.name}
                     </span>
                   )}
-                  <h3 className="text-lg lg:text-2xl font-black text-white leading-tight mb-5 text-center">
+                  <h3 className="text-base sm:text-lg lg:text-2xl font-black text-white leading-tight mb-4 sm:mb-5 text-center">
                     {p.name}
                   </h3>
                   <Link href={`/products/${p.slug}`}
-                    className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-7 py-3 text-sm font-bold text-white uppercase tracking-wider hover:from-brand-400 hover:to-brand-500 transition-all shadow-lg shadow-brand-600/30">
+                    className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-5 sm:px-7 py-2.5 sm:py-3 text-xs sm:text-sm font-bold text-white uppercase tracking-wider hover:from-brand-400 hover:to-brand-500 transition-all shadow-lg shadow-brand-600/30">
                     Know More
                   </Link>
                 </motion.div>
@@ -247,10 +300,10 @@ function ProductShowcase({ products }: { products: Product[] }) {
           </div>
 
           {/* Dots */}
-          <div className="flex justify-center gap-2 mt-8">
+          <div className="flex justify-center gap-2 mt-6 sm:mt-8">
             {showcaseProducts.map((_, i) => (
               <button key={i} onClick={() => setCurrent(i)}
-                className={`h-2.5 rounded-full transition-all duration-500 ${i === current ? 'w-8 bg-brand-600' : 'w-2.5 bg-steel-200 hover:bg-steel-300'}`} />
+                className={`h-2 sm:h-2.5 rounded-full transition-all duration-500 ${i === current ? 'w-6 sm:w-8 bg-brand-600' : 'w-2 sm:w-2.5 bg-steel-200 hover:bg-steel-300'}`} />
             ))}
           </div>
         </Reveal>
@@ -281,16 +334,16 @@ function CategoriesFan({ products }: { products: Product[] }) {
   const hoveredImg = hoveredProduct?.images?.find((im) => im.isDefault)?.url || hoveredProduct?.images?.[0]?.url || '';
 
   return (
-    <section aria-labelledby="cat-h" className="py-12 lg:py-16 bg-gradient-to-b from-white to-steel-50/30 relative overflow-hidden">
+    <section aria-labelledby="cat-h" className="py-10 sm:py-12 lg:py-16 bg-gradient-to-b from-white to-steel-50/30 relative overflow-hidden">
       <div className="container-main relative">
-        <Reveal><div className="text-center mb-10">
+        <Reveal><div className="text-center mb-8 sm:mb-10">
           <span className="text-[11px] font-extrabold text-brand-600 tracking-[0.3em] uppercase mb-3 block">Product Range</span>
-          <h2 id="cat-h" className="text-4xl font-black text-steel-900 lg:text-5xl tracking-tight">Shop by Category</h2>
-          <p className="mt-4 text-steel-500 max-w-xl mx-auto leading-relaxed">Premium Colorbond and Galvanised products for residential and commercial projects.</p>
+          <h2 id="cat-h" className="text-3xl sm:text-4xl font-black text-steel-900 lg:text-5xl tracking-tight">Shop by Category</h2>
+          <p className="mt-3 sm:mt-4 text-steel-500 max-w-xl mx-auto leading-relaxed text-sm sm:text-base">Premium Colorbond and Galvanised products for residential and commercial projects.</p>
         </div></Reveal>
+
         <Reveal>
-          <div className="relative mx-auto" style={{ maxWidth: '1000px', aspectRatio: '2 / 1.1' }}>
-            {/* SVG fan segments only */}
+          <div className="relative mx-auto" style={{ maxWidth: '1300px', aspectRatio: '2.0 / 1.1' }}>
             <svg viewBox="0 0 1000 550" className="w-full h-full absolute inset-0">
               {categories.map((_, i) => {
                 const total = categories.length;
@@ -318,12 +371,10 @@ function CategoriesFan({ products }: { products: Product[] }) {
               })}
             </svg>
 
-            {/* HTML labels inside segments — no rotation, just positioned */}
             {categories.map((cat, i) => {
               const total = categories.length;
               const midAngle = Math.PI + ((i + 0.5) * Math.PI) / total;
               const labelR = 0.72;
-              // Convert to percentage of the container
               const leftPct = 50 + labelR * Math.cos(midAngle) * 48;
               const topPct = 95 + labelR * Math.sin(midAngle) * 87;
               return (
@@ -333,22 +384,20 @@ function CategoriesFan({ products }: { products: Product[] }) {
                   onMouseEnter={() => setHoveredIdx(i)}
                   onMouseLeave={() => setHoveredIdx(null)}
                 >
-                  <span className={`text-sm lg:text-lg font-extrabold transition-colors duration-200 whitespace-nowrap ${hoveredIdx === i ? 'text-brand-600' : 'text-steel-700'}`}>
+                  <span className={`text-[10px] sm:text-sm lg:text-lg font-extrabold transition-colors duration-200 whitespace-nowrap ${hoveredIdx === i ? 'text-brand-600' : 'text-steel-700'}`}>
                     {cat.name}
                   </span>
-                  <span className="text-[9px] lg:text-[10px] text-steel-400 max-w-[120px] leading-tight mt-0.5 hidden lg:block">
+                  <span className="text-[8px] sm:text-[9px] lg:text-[10px] text-steel-400 max-w-[80px] sm:max-w-[120px] leading-tight mt-0.5 hidden sm:block">
                     {cat.desc}
                   </span>
                 </Link>
               );
             })}
 
-            {/* Center circle with logo — at the fan's center point */}
-            <div className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-[40%] w-28 h-28 lg:w-36 lg:h-36 rounded-full bg-white shadow-2xl border border-steel-100 flex items-center justify-center z-10 overflow-hidden">
+            <div className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-[15%] w-20 h-20 sm:w-28 sm:h-28 lg:w-36 lg:h-36 rounded-full bg-white shadow-2xl border border-steel-100 flex items-center justify-center z-10 overflow-hidden">
               <img src="/images/logo.png" alt="Metfold" className="w-[85%] h-auto object-contain" />
             </div>
 
-            {/* Hover product image — dynamically positioned near the hovered segment */}
             <AnimatePresence>
               {hoveredCat && hoveredIdx !== null && (() => {
                 const total = categories.length;
@@ -393,104 +442,6 @@ function CategoriesFan({ products }: { products: Product[] }) {
    ORBITING CARD — figure-8 (lemniscate) path
    ═══════════════════════════════════════════════════════════════════════ */
 
-function OrbitingCard({ index, totalCards, products }: { index: number; totalCards: number; products: Product[] }) {
-  const duration = 20;
-  const offset = index / totalCards;
-  const steps = 120;
-  const xKeys: number[] = [];
-  const yKeys: number[] = [];
-  const scaleKeys: number[] = [];
-  const zKeys: number[] = [];
-  const radiusX = 220;
-  const radiusY = 160;
-  const cx = 240 - 80;
-  const cy = 240 - 60;
-
-  // Circular orbit with 3D depth: back (top, small, behind) → front (bottom, large, in front)
-  for (let i = 0; i <= steps; i++) {
-    const t = ((i / steps) + offset) * 2 * Math.PI;
-    const cosT = Math.cos(t);
-    const sinT = Math.sin(t);
-    xKeys.push(cx + radiusX * cosT);
-    yKeys.push(cy + radiusY * sinT * 0.5); // flattened Y for perspective
-    // Scale: small at back (top), large at front (bottom)
-    const depth = (sinT + 1) / 2; // 0 = back, 1 = front
-    scaleKeys.push(0.6 + depth * 0.5); // 0.6 → 1.1
-    zKeys.push(Math.round(depth * 40)); // z-index: 0–40
-  }
-
-  const cardContent = (() => {
-    if (index === 0) {
-      return (
-        <div className="w-[160px] rounded-xl bg-white/95 backdrop-blur shadow-xl shadow-black/15 overflow-hidden">
-          <div className="h-[80px] bg-white flex items-center justify-center p-2">
-            {products[0]?.images?.[0]?.url ? (
-              <img src={products[0].images[0].url} alt={products[0]?.name} className="max-h-full max-w-full object-contain" />
-            ) : <Package className="h-8 w-8 text-steel-200" />}
-          </div>
-          <div className="px-3 py-2">
-            <div className="text-[9px] font-bold text-brand-500 uppercase">{products[0]?.category?.name}</div>
-            <div className="text-[11px] font-bold text-steel-900 line-clamp-1">{products[0]?.name}</div>
-          </div>
-        </div>
-      );
-    }
-    if (index === 1) {
-      return (
-        <div className="bg-white/95 backdrop-blur rounded-xl shadow-lg shadow-black/10 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-green-50 flex items-center justify-center">
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-            </div>
-            <div>
-              <div className="text-[10px] font-bold text-steel-900">Quality Assured</div>
-              <div className="text-[9px] text-steel-400">AS Standards</div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    if (index === 2) {
-      return (
-        <div className="w-[160px] rounded-xl bg-white/95 backdrop-blur shadow-xl shadow-black/15 overflow-hidden">
-          <div className="h-[80px] bg-white flex items-center justify-center p-2">
-            {products[1]?.images?.[0]?.url ? (
-              <img src={products[1].images[0].url} alt={products[1]?.name} className="max-h-full max-w-full object-contain" />
-            ) : <Package className="h-8 w-8 text-steel-200" />}
-          </div>
-          <div className="px-3 py-2">
-            <div className="text-[11px] font-bold text-steel-900 line-clamp-1">{products[1]?.name}</div>
-          </div>
-        </div>
-      );
-    }
-    return (
-      <div className="bg-white/95 backdrop-blur rounded-xl shadow-lg shadow-black/10 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-brand-50 flex items-center justify-center">
-            <Truck className="h-4 w-4 text-brand-500" />
-          </div>
-          <div>
-            <div className="text-[10px] font-bold text-steel-900">Fast Delivery</div>
-            <div className="text-[9px] text-steel-400">Australia-wide</div>
-          </div>
-        </div>
-      </div>
-    );
-  })();
-
-  return (
-    <motion.div
-      animate={{ x: xKeys, y: yKeys, scale: scaleKeys, zIndex: zKeys }}
-      transition={{ duration, repeat: Infinity, ease: 'linear' }}
-      className="absolute"
-      style={{ zIndex: 10 }}
-    >
-      {cardContent}
-    </motion.div>
-  );
-}
-
 /* ═══════════════════════════════════════════════════════════════════════════
    MAIN PAGE
    ═══════════════════════════════════════════════════════════════════════ */
@@ -513,12 +464,14 @@ export default function HomePage() {
         className="relative overflow-hidden bg-steel-950">
 
         {/* JSON-LD */}
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-          '@context': 'https://schema.org', '@type': 'Store', name: 'Metfold Sheet Metal',
-          description: 'Australia\'s trusted supplier of Colorbond roofing, wall cladding, fascia & gutter, downpipes, flashings and rainwater goods.',
-          url: 'https://metfoldsm.com.au', image: '/images/logo.png', priceRange: '$$',
-          address: { '@type': 'PostalAddress', addressCountry: 'AU' },
-        }) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org', '@type': 'Store', name: 'Metfold Sheet Metal',
+            description: 'Australia\'s trusted supplier of Colorbond roofing, wall cladding, fascia & gutter, downpipes, flashings and rainwater goods.',
+            url: 'https://metfoldsm.com.au', image: '/images/logo.png', priceRange: '$$',
+            address: { '@type': 'PostalAddress', addressCountry: 'AU' },
+          })
+        }} />
 
         {/* Background Video */}
         <video
@@ -535,7 +488,7 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-black/55 z-[1]" />
 
         <div className="container-main relative z-[2]">
-          <div className="flex flex-col lg:flex-row items-center min-h-[85vh] py-16 lg:py-0 gap-10 lg:gap-16">
+          <div className="flex flex-col lg:flex-row items-center min-h-[70vh] sm:min-h-[85vh] py-12 sm:py-16 lg:py-0 gap-10 lg:gap-16">
             {/* Left — Text content */}
             <div className="flex-1 max-w-xl relative z-10">
               <div className="inline-flex items-center gap-2.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 px-4 py-1.5 text-[12px] font-semibold text-white/90 mb-6">
@@ -546,7 +499,7 @@ export default function HomePage() {
                 Online Ordering Now Live
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-[-0.03em] leading-[1.05] text-white">
+              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-[-0.03em] leading-[1.05] text-white">
                 Australia&apos;s Trusted{' '}
                 <span className="relative inline-block">
                   <span className="text-brand-400">Roofing</span>
@@ -555,7 +508,7 @@ export default function HomePage() {
                 &amp; Sheet Metal Supplier
               </h1>
 
-              <p className="mt-6 text-base sm:text-lg text-white/70 leading-relaxed">
+              <p className="mt-4 sm:mt-6 text-sm sm:text-base lg:text-lg text-white/70 leading-relaxed">
                 Configure Colorbond roofing, cladding, flashings and rainwater goods online with{' '}
                 <span className="text-white font-semibold">instant pricing</span> — delivered anywhere in Australia.
               </p>
@@ -580,7 +533,7 @@ export default function HomePage() {
               </div>
 
               {/* Trust stats */}
-              <div className="mt-10 flex items-center gap-8 border-t border-white/10 pt-8">
+              <div className="mt-8 sm:mt-10 flex items-center gap-6 sm:gap-8 border-t border-white/10 pt-6 sm:pt-8">
                 {[
                   { val: '500+', label: 'Products' },
                   { val: '15+', label: 'Years' },
@@ -594,35 +547,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Right — Fixed circle + figure-8 orbiting cards */}
-            <div className="flex-1 relative hidden lg:flex items-center justify-center">
-              <div className="relative w-[480px] h-[480px]">
-                {/* Fixed white circle */}
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] rounded-full bg-white/12 backdrop-blur-sm border border-white/10" />
-
-                {/* Figure-8 orbiting cards */}
-                <OrbitingCard
-                  index={0}
-                  totalCards={4}
-                  products={products}
-                />
-                <OrbitingCard
-                  index={1}
-                  totalCards={4}
-                  products={products}
-                />
-                <OrbitingCard
-                  index={2}
-                  totalCards={4}
-                  products={products}
-                />
-                <OrbitingCard
-                  index={3}
-                  totalCards={4}
-                  products={products}
-                />
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -634,13 +558,13 @@ export default function HomePage() {
       <CategoriesFan products={products} />
 
       {/* ═══════════════  HOW IT WORKS  ════════════════════════════════════ */}
-      <section aria-labelledby="steps-h" className="py-12 lg:py-16 bg-gradient-to-b from-steel-50/40 to-white relative overflow-hidden">
+      <section aria-labelledby="steps-h" className="py-10 sm:py-12 lg:py-16 bg-gradient-to-b from-steel-50/40 to-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-brand-50/15 to-transparent pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-1/3 h-1/2 bg-gradient-to-tr from-cyan-50/10 to-transparent pointer-events-none" />
         <div className="container-main relative">
           <Reveal><div className="text-center mb-10">
             <span className="text-[11px] font-extrabold text-brand-600 tracking-[0.3em] uppercase mb-3 block">How It Works</span>
-            <h2 id="steps-h" className="text-4xl font-black text-steel-900 lg:text-5xl tracking-tight">Order in 3 Easy Steps</h2>
+            <h2 id="steps-h" className="text-3xl sm:text-4xl font-black text-steel-900 lg:text-5xl tracking-tight">Order in 3 Easy Steps</h2>
             <p className="mt-4 text-steel-400 max-w-lg mx-auto leading-relaxed">Fast, transparent and hassle-free — from configuration to delivery.</p>
           </div></Reveal>
           <div className="grid lg:grid-cols-3 gap-10 relative">
@@ -673,19 +597,19 @@ export default function HomePage() {
       </section>
 
       {/* ═══════════════  WHY US  ══════════════════════════════════════════ */}
-      <section aria-labelledby="why-h" className="py-12 lg:py-16 bg-steel-950 relative overflow-hidden">
+      <section aria-labelledby="why-h" className="py-10 sm:py-12 lg:py-16 bg-steel-950 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_70%_40%,rgba(0,116,197,0.07),transparent)] pointer-events-none" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_60%_at_20%_80%,rgba(12,147,231,0.04),transparent)] pointer-events-none" />
         <div className="container-main relative z-10">
           <Reveal><div className="text-center mb-10">
             <span className="text-[11px] font-extrabold text-brand-400 tracking-[0.3em] uppercase mb-3 block">Why Metfold</span>
-            <h2 id="why-h" className="text-4xl font-black text-white lg:text-5xl tracking-tight">Built for the Trade</h2>
+            <h2 id="why-h" className="text-3xl sm:text-4xl font-black text-white lg:text-5xl tracking-tight">Built for the Trade</h2>
             <p className="mt-4 text-steel-400 max-w-xl mx-auto">Premium materials, expert knowledge, and a seamless online experience.</p>
           </div></Reveal>
           <Stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {features.map((f) => (
               <FadeItem key={f.title}>
-                <div className="group relative rounded-[1.75rem] bg-white/[0.03] border border-white/[0.05] p-10 text-center hover:bg-white/[0.08] hover:border-white/[0.12] transition-all duration-700 hover:-translate-y-3 overflow-hidden">
+                <div className="group relative rounded-[1.75rem] bg-white/[0.03] border border-white/[0.05] p-6 sm:p-10 text-center hover:bg-white/[0.08] hover:border-white/[0.12] transition-all duration-700 hover:-translate-y-3 overflow-hidden">
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 bg-gradient-to-b from-brand-500/[0.05] to-transparent" />
                   <div className={`relative mx-auto h-[72px] w-[72px] rounded-2xl bg-gradient-to-br ${f.color} flex items-center justify-center shadow-2xl mb-7 group-hover:scale-110 group-hover:rotate-[-5deg] transition-all duration-600`}>
                     <f.icon className="h-8 w-8 text-white" />
@@ -702,11 +626,11 @@ export default function HomePage() {
 
 
       {/* ═══════════════  CUSTOMERS  ═══════════════════════════════════════ */}
-      <section aria-labelledby="serve-h" className="py-12 lg:py-16 bg-steel-50/40">
+      <section aria-labelledby="serve-h" className="py-10 sm:py-12 lg:py-16 bg-steel-50/40">
         <div className="container-main">
           <Reveal><div className="text-center mb-10">
             <span className="text-[11px] font-extrabold text-brand-600 tracking-[0.3em] uppercase mb-3 block">Our Customers</span>
-            <h2 id="serve-h" className="text-4xl font-black text-steel-900 lg:text-5xl tracking-tight">Built for Every Project</h2>
+            <h2 id="serve-h" className="text-3xl sm:text-4xl font-black text-steel-900 lg:text-5xl tracking-tight">Built for Every Project</h2>
             <p className="mt-4 text-steel-400 max-w-lg mx-auto leading-relaxed">Whether you're a homeowner renovating or a commercial contractor — we have you covered.</p>
           </div></Reveal>
           <Stagger className="grid grid-cols-2 lg:grid-cols-4 gap-6">
@@ -717,7 +641,7 @@ export default function HomePage() {
               { icon: Factory, label: 'Contractors', desc: 'Reliable supply chain & fast turnaround' },
             ].map((c) => (
               <FadeItem key={c.label}>
-                <div className="group text-center p-10 rounded-[1.75rem] border border-steel-100/80 bg-white hover:shadow-2xl hover:shadow-brand-100/30 hover:-translate-y-3 transition-all duration-700 relative overflow-hidden">
+                <div className="group text-center p-6 sm:p-10 rounded-[1.75rem] border border-steel-100/80 bg-white hover:shadow-2xl hover:shadow-brand-100/30 hover:-translate-y-3 transition-all duration-700 relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-b from-brand-50/0 group-hover:from-brand-50/40 to-transparent transition-all duration-700" />
                   <div className="relative h-[68px] w-[68px] rounded-2xl bg-gradient-to-br from-brand-50 to-brand-100/80 border border-brand-100/50 mx-auto flex items-center justify-center mb-6 group-hover:scale-110 group-hover:shadow-lg transition-all duration-600">
                     <c.icon className="h-7 w-7 text-brand-600" />
@@ -732,7 +656,7 @@ export default function HomePage() {
       </section>
 
       {/* ═══════════════  TRADE CTA  ═══════════════════════════════════════ */}
-      <section aria-labelledby="trade-h" className="relative py-32 lg:py-40 overflow-hidden">
+      <section aria-labelledby="trade-h" className="relative py-16 sm:py-24 lg:py-40 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800" />
         <div className="absolute inset-0 pointer-events-none">
           <motion.div animate={{ scale: [1, 1.1, 1], opacity: [0.04, 0.12, 0.04] }}
@@ -747,13 +671,13 @@ export default function HomePage() {
             <div className="inline-flex items-center gap-2 rounded-full bg-white/15 backdrop-blur-sm border border-white/10 px-5 py-2 text-sm font-bold text-white/90 mb-8">
               <Sparkles className="h-4 w-4" />Exclusive Trade Benefits
             </div>
-            <h2 id="trade-h" className="text-4xl font-black text-white lg:text-5xl tracking-tight">Ready to Save More?</h2>
-            <p className="mt-5 text-lg text-brand-100/90 leading-relaxed">Register for a free trade account — unlock exclusive pricing, volume discounts and priority delivery.</p>
+            <h2 id="trade-h" className="text-3xl sm:text-4xl font-black text-white lg:text-5xl tracking-tight">Ready to Save More?</h2>
+            <p className="mt-4 sm:mt-5 text-base sm:text-lg text-brand-100/90 leading-relaxed">Register for a free trade account — unlock exclusive pricing, volume discounts and priority delivery.</p>
             <div className="mt-10 flex flex-wrap justify-center gap-4">
-              <Link href="/contact" className="group inline-flex items-center gap-2.5 rounded-2xl bg-white px-9 py-4 text-sm font-black text-brand-600 shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300">
+              <Link href="/contact" className="group inline-flex items-center gap-2.5 rounded-2xl bg-white px-6 sm:px-9 py-3.5 sm:py-4 text-sm font-black text-brand-600 shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300">
                 Apply for Trade Account <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <Link href="/contact" className="inline-flex items-center gap-2 rounded-2xl border-2 border-white/20 px-9 py-4 text-sm font-bold text-white hover:bg-white/10 hover:border-white/40 transition-all duration-300">
+              <Link href="/contact" className="inline-flex items-center gap-2 rounded-2xl border-2 border-white/20 px-6 sm:px-9 py-3.5 sm:py-4 text-sm font-bold text-white hover:bg-white/10 hover:border-white/40 transition-all duration-300">
                 Contact Sales
               </Link>
             </div>
@@ -796,19 +720,19 @@ export default function HomePage() {
       </section>
 
       {/* ═══════════════  CONTACT  ═════════════════════════════════════════ */}
-      <section aria-label="Contact" className="py-14 bg-steel-950 relative overflow-hidden">
+      <section aria-label="Contact" className="py-10 sm:py-14 bg-steel-950 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_100%_at_50%_50%,rgba(0,116,197,0.04),transparent)] pointer-events-none" />
         <div className="container-main relative">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-5 sm:gap-8 text-center sm:text-left">
             <div>
-              <h2 className="text-xl font-black text-white tracking-tight">Need help choosing the right product?</h2>
+              <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">Need help choosing the right product?</h2>
               <p className="text-steel-400/70 text-sm mt-1.5">Our expert team is available Monday to Friday for sizing, specs and quotes.</p>
             </div>
-            <div className="flex gap-3">
-              <Link href="/contact" className="group inline-flex items-center gap-2 rounded-2xl bg-brand-600 px-7 py-3.5 text-sm font-bold text-white hover:bg-brand-500 hover:-translate-y-0.5 transition-all duration-300 shadow-lg shadow-brand-600/20">
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <Link href="/contact" className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-600 px-6 sm:px-7 py-3 sm:py-3.5 text-sm font-bold text-white hover:bg-brand-500 hover:-translate-y-0.5 transition-all duration-300 shadow-lg shadow-brand-600/20">
                 <Phone className="h-4 w-4" />Get in Touch
               </Link>
-              <Link href="/products" className="inline-flex items-center gap-2 rounded-2xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-white/80 hover:bg-white/[0.05] hover:border-white/20 transition-all duration-300">
+              <Link href="/products" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 px-6 sm:px-7 py-3 sm:py-3.5 text-sm font-semibold text-white/80 hover:bg-white/[0.05] hover:border-white/20 transition-all duration-300">
                 Browse Products <ArrowRight className="h-4 w-4" />
               </Link>
             </div>

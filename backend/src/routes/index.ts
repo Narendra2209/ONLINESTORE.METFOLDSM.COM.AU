@@ -11,6 +11,7 @@ import adminUserRoutes, { roleRoutes } from './admin-user.routes';
 import claddingRoutes, { adminCladdingRoutes } from './cladding.routes';
 import dambusterRoutes, { adminDambusterRoutes } from './dambuster.routes';
 import contactRoutes from './contact.routes';
+import adminCustomerRoutes from './customer.routes';
 
 const router = Router();
 
@@ -66,6 +67,7 @@ router.use('/admin/users', adminUserRoutes);
 router.use('/admin/roles', roleRoutes);
 router.use('/admin/cladding', adminCladdingRoutes);
 router.use('/admin/dambuster', adminDambusterRoutes);
+router.use('/admin/customers', adminCustomerRoutes);
 
 // CMS routes
 router.use('/', cmsRoutes);
